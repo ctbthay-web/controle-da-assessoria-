@@ -1,0 +1,43 @@
+{
+  "users": [
+    {
+      "id": "1",
+      "name": "Thayane Carvalho",
+      "email": "ctbthay@gmail.com",
+      "role": "admin",
+      "status": "ativo"
+    },
+    {
+      "id": "2",
+      "name": "Carlos Souza",
+      "email": "carlos@contabil.com",
+      "role": "colaborador",
+      "status": "ativo"
+    },
+    {
+      "id": "3",
+      "name": "Beatriz Lima",
+      "email": "beatriz@contabil.com",
+      "role": "colaborador",
+      "status": "ativo"
+    }
+  ],
+  "clients": [],
+  "services": [],
+  "financial": [],
+  "schedules": [],
+  "passwords": [],
+  "passwordAccessLogs": [],
+  "fiscalDeadlines": [],
+  "tasks": [],
+  "documents": [],
+  "logs": [
+    {
+      "id": "log_init",
+      "usuarioNome": "Sistema",
+      "acao": "Banco de Dados Inicializado",
+      "detalhes": "Sistema limpo com sucesso. Pronto para novos lançamentos de clientes, finanças e tarefas.",
+      "timestamp": "2026-05-25T01:10:00Z"
+    }
+  ]
+}
