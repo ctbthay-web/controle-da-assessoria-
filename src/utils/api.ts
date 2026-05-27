@@ -65,10 +65,10 @@ export const api = {
     }> {
       return await fetchWithAuth("/api/dashboard/stats");
     },
-    async createLog(acao: string, detalhes: string): Promise<any> {
+    async createLog(acao: string, detalhes: string, usuarioNome?: string): Promise<any> {
       return await fetchWithAuth("/api/audit-logs", {
         method: "POST",
-        body: JSON.stringify({ acao, detalhes })
+        body: JSON.stringify({ acao, detalhes, usuarioNome })
       });
     }
   },
@@ -251,6 +251,18 @@ export const api = {
     },
     async delete(id: string): Promise<void> {
       await fetchWithAuth(`/api/documents/${id}`, { method: "DELETE" });
+    }
+  },
+
+  users: {
+    async list(): Promise<User[]> {
+      return await fetchWithAuth("/api/users");
+    },
+    async create(user: Omit<User, "id" | "status">): Promise<User> {
+      return await fetchWithAuth("/api/users", {
+        method: "POST",
+        body: JSON.stringify(user)
+      });
     }
   }
 };

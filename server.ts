@@ -383,9 +383,9 @@ app.get("/api/audit-logs", (req, res) => {
 });
 
 app.post("/api/audit-logs", (req, res) => {
-  const { acao, detalhes } = req.body;
-  const user = activeSessionUser || { name: "Thayane Carvalho" };
-  addLog(user.name, acao || "Ação Manual", detalhes || "Anotação de log manual.");
+  const { acao, detalhes, usuarioNome } = req.body;
+  const user = usuarioNome || activeSessionUser?.name || "Thayane Carvalho";
+  addLog(user, acao || "Ação Manual", detalhes || "Anotação de log manual.");
   res.status(201).json({ status: "ok", logs: db.logs });
 });
 
@@ -809,6 +809,37 @@ app.delete("/api/documents/:id", (req, res) => {
   db.documents = db.documents.filter(d => d.id !== id);
   saveDatabase(db);
   res.json({ success: true });
+});
+
+// ==========================================
+// 11. USUÁRIOS (LISTING & REGISTRATION)
+// ==========================================
+app.get("/api/users", (req, res) => {
+  res.json(db.users);
+});
+
+app.post("/api/users", (req, res) => {
+  const { name, email, role } = req.body;
+  if (!name || !email) {
+    return res.status(400).json({ error: "Nome e e-mail são obrigatórios para o cadastro." });
+  }
+  // Check if email already registered
+  const exists = db.users.some(u => u.email.toLowerCase() === email.toLowerCase());
+  if (exists) {
+    return res.status(400).json({ error: "Este endereço de e-mail já está cadastrado." });
+  }
+
+  const newUser = {
+    id: "user_" + Date.now().toString(),
+    name: name.trim(),
+    email: email.trim().toLowerCase(),
+    role: role || "colaborador",
+    status: "ativo" as const
+  };
+  db.users.push(newUser);
+  saveDatabase(db);
+  addLog(activeSessionUser?.name || "Sistema", "Cadastro de Usuário", `Novo usuário ${name} (${email}) adicionado com sucesso.`);
+  res.status(201).json(newUser);
 });
 
 

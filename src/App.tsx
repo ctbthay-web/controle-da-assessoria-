@@ -38,6 +38,7 @@ export default function App() {
   const [deadlines, setDeadlines] = useState<FiscalDeadline[]>([]);
   const [tasks, setTasks] = useState<Task[]>([]);
   const [documents, setDocuments] = useState<DocumentInfo[]>([]);
+  const [users, setUsers] = useState<User[]>([]);
 
   // Statistics for dashboard
   const [dashboardStats, setDashboardStats] = useState<any>({
@@ -80,7 +81,7 @@ export default function App() {
       const [
         clientsList, servicesList, financialList, 
         schedulesList, passwordsList, deadlinesList, 
-        tasksList, docsList, statsData
+        tasksList, docsList, statsData, usersList
       ] = await Promise.all([
         api.clients.list(),
         api.services.list(),
@@ -90,7 +91,8 @@ export default function App() {
         api.fiscalDeadlines.list(),
         api.tasks.list(),
         api.documents.list(),
-        api.dashboard.getStats()
+        api.dashboard.getStats(),
+        api.users.list()
       ]);
 
       setClients(clientsList);
@@ -102,6 +104,7 @@ export default function App() {
       setTasks(tasksList);
       setDocuments(docsList);
       setDashboardStats(statsData);
+      setUsers(usersList);
     } catch (err) {
       console.error("Erro ao sincronizar tabelas operacionais:", err);
     } finally {
@@ -143,7 +146,9 @@ export default function App() {
             stats={dashboardStats} 
             loading={loadingData}
             onNavigateToModule={(mod) => setCurrentModule(mod)}
-            onCreateLog={(acao, detalhes) => executeAndSync(() => api.dashboard.createLog(acao, detalhes))}
+            onCreateLog={(acao, detalhes, usuarioNome) => executeAndSync(() => api.dashboard.createLog(acao, detalhes, usuarioNome))}
+            users={users}
+            onCreateUser={(newUser) => executeAndSync(() => api.users.create(newUser))}
           />
         );
       case "clientes":
