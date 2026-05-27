@@ -143,6 +143,7 @@ export default function App() {
             stats={dashboardStats} 
             loading={loadingData}
             onNavigateToModule={(mod) => setCurrentModule(mod)}
+            onCreateLog={(acao, detalhes) => executeAndSync(() => api.dashboard.createLog(acao, detalhes))}
           />
         );
       case "clientes":

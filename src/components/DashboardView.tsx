@@ -2,7 +2,7 @@ import React from "react";
 import { 
   Users, Briefcase, TrendingUp, AlertTriangle, 
   Clock, DollarSign, Calendar, Eye, ShieldCheck, 
-  ArrowUpRight, ArrowDownRight, FileText
+  ArrowUpRight, ArrowDownRight, FileText, Plus, X
 } from "lucide-react";
 import { FiscalDeadline, AuditLog } from "../types";
 
@@ -21,9 +21,31 @@ interface DashboardViewProps {
   stats: DashboardStats;
   loading: boolean;
   onNavigateToModule: (module: string) => void;
+  onCreateLog: (acao: string, detalhes: string) => Promise<void>;
 }
 
-export function DashboardView({ stats, loading, onNavigateToModule }: DashboardViewProps) {
+export function DashboardView({ stats, loading, onNavigateToModule, onCreateLog }: DashboardViewProps) {
+  const [isLogModalOpen, setIsLogModalOpen] = React.useState(false);
+  const [acao, setAcao] = React.useState("");
+  const [detalhes, setDetalhes] = React.useState("");
+  const [saving, setSaving] = React.useState(false);
+
+  const handleSubmitLog = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!acao.trim() || !detalhes.trim()) return;
+
+    setSaving(true);
+    try {
+      await onCreateLog(acao.trim(), detalhes.trim());
+      setAcao("");
+      setDetalhes("");
+      setIsLogModalOpen(false);
+    } catch {
+      alert("Erro ao criar registro de log.");
+    } finally {
+      setSaving(false);
+    }
+  };
   if (loading) {
     return (
       <div className="space-y-6 animate-pulse">
@@ -244,7 +266,14 @@ export function DashboardView({ stats, loading, onNavigateToModule }: DashboardV
               <h3 className="text-xs font-semibold text-blue-400 uppercase tracking-wider font-mono">Eventos de Auditoria</h3>
               <p className="text-xs text-zinc-500">Logs internos e monitoramento de segurança.</p>
             </div>
-            <ShieldCheck className="w-5 h-5 text-blue-400" />
+            <button
+              onClick={() => setIsLogModalOpen(true)}
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-600/15 hover:bg-blue-600/35 border border-blue-500/20 text-blue-400 text-xs font-semibold rounded-lg transition-all cursor-pointer"
+              title="Registrar log manualmente"
+            >
+              <Plus className="w-3.5 h-3.5" />
+              <span>Criar Log</span>
+            </button>
           </div>
 
           <div className="space-y-3">
@@ -270,6 +299,78 @@ export function DashboardView({ stats, loading, onNavigateToModule }: DashboardV
         </div>
 
       </div>
+
+      {/* MODAL DE CRIAÇÃO DE LOG MANUAL */}
+      {isLogModalOpen && (
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4 z-50 animate-in fade-in duration-200">
+          <div className="bg-[#111113] border border-white/10 rounded-2xl max-w-md w-full p-6 shadow-2xl relative text-left">
+            <button
+              type="button"
+              onClick={() => setIsLogModalOpen(false)}
+              className="absolute top-4 right-4 text-zinc-400 hover:text-white transition-colors"
+            >
+              <X className="w-4 h-4" />
+            </button>
+
+            <div className="flex items-center gap-3 mb-5">
+              <div className="w-9 h-9 rounded-lg bg-blue-500/10 border border-blue-500/20 flex items-center justify-center text-blue-400">
+                <ShieldCheck className="w-5 h-5" />
+              </div>
+              <div>
+                <h3 className="text-xs font-bold text-white uppercase tracking-wider font-mono">Registrar Evento de Auditoria</h3>
+                <p className="text-[11px] text-zinc-500 font-sans leading-tight">Cria uma nova entrada de log manual no painel.</p>
+              </div>
+            </div>
+
+            <form onSubmit={handleSubmitLog} className="space-y-4">
+              <div>
+                <label className="block text-zinc-400 text-[10px] font-semibold mb-1.5 uppercase tracking-wider font-mono">Fato / Ação Realizada</label>
+                <input
+                  type="text"
+                  required
+                  placeholder="Ex: Revisão Fiscal Completa Efetuada"
+                  className="w-full bg-[#0c0c0e] border border-white/5 rounded-lg px-3 py-2 text-xs text-zinc-200 focus:outline-none focus:border-blue-500 placeholder-zinc-650 font-mono"
+                  value={acao}
+                  onChange={(e) => setAcao(e.target.value)}
+                />
+              </div>
+
+              <div>
+                <label className="block text-zinc-400 text-[10px] font-semibold mb-1.5 uppercase tracking-wider font-mono">Detalhes Operacionais</label>
+                <textarea
+                  required
+                  rows={4}
+                  placeholder="Insira detalhes descritivos das conferências ou mudanças efetuadas..."
+                  className="w-full bg-[#0c0c0e] border border-white/5 rounded-lg px-3 py-2 text-xs text-zinc-200 focus:outline-none focus:border-blue-500 placeholder-zinc-650 resize-none font-mono"
+                  value={detalhes}
+                  onChange={(e) => setDetalhes(e.target.value)}
+                />
+              </div>
+
+              <div className="flex justify-end gap-2.5 pt-4 border-t border-white/5">
+                <button
+                  type="button"
+                  onClick={() => setIsLogModalOpen(false)}
+                  disabled={saving}
+                  className="px-4 py-2 bg-white/[0.03] hover:bg-white/[0.06] disabled:opacity-50 text-zinc-300 border border-white/5 text-xs font-semibold rounded-lg cursor-pointer transition-colors"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  disabled={saving}
+                  className="px-4 py-2 bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white text-xs font-semibold rounded-lg cursor-pointer flex items-center gap-1.5 transition-colors shadow-md shadow-blue-500/10"
+                >
+                  {saving && (
+                    <span className="animate-spin inline-block w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full mr-1"></span>
+                  )}
+                  {saving ? "Gravando..." : "Gravar Log"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

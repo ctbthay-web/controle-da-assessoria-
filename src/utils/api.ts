@@ -64,6 +64,12 @@ export const api = {
       recentLogs: AuditLog[];
     }> {
       return await fetchWithAuth("/api/dashboard/stats");
+    },
+    async createLog(acao: string, detalhes: string): Promise<any> {
+      return await fetchWithAuth("/api/audit-logs", {
+        method: "POST",
+        body: JSON.stringify({ acao, detalhes })
+      });
     }
   },
 

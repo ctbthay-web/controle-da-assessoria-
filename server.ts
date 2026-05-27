@@ -382,6 +382,13 @@ app.get("/api/audit-logs", (req, res) => {
   res.json(db.logs);
 });
 
+app.post("/api/audit-logs", (req, res) => {
+  const { acao, detalhes } = req.body;
+  const user = activeSessionUser || { name: "Thayane Carvalho" };
+  addLog(user.name, acao || "Ação Manual", detalhes || "Anotação de log manual.");
+  res.status(201).json({ status: "ok", logs: db.logs });
+});
+
 // ==========================================
 // 3. CLIENTS CRUD
 // ==========================================
