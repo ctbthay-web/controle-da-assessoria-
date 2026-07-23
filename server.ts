@@ -602,6 +602,17 @@ app.post("/api/auth/register", (req, res) => {
   });
 });
 
+// Aliases for compatibility
+app.post("/api/register", (req, res, next) => {
+  req.url = "/api/auth/register";
+  app(req, res, next);
+});
+
+app.post("/api/login", (req, res, next) => {
+  req.url = "/api/auth/login";
+  app(req, res, next);
+});
+
 app.post("/api/auth/logout", (req, res) => {
   if (activeSessionUser) {
     addLog(activeSessionUser.name, "Sessão encerrada", "Logout solicitado pelo painel.");

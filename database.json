@@ -65,6 +65,13 @@
   "documents": [],
   "logs": [
     {
+      "id": "log_1784772448940",
+      "usuarioNome": "Taiana Guimaraes",
+      "acao": "Perfil Atualizado",
+      "detalhes": "Nome do usuário do e-mail ctbthay@gmail.com alterado para \"Taiana Guimaraes\".",
+      "timestamp": "2026-07-23T02:07:28.940Z"
+    },
+    {
       "id": "log_1784771568756",
       "usuarioNome": "Taiana Guimaraes",
       "acao": "Sessão iniciada",
