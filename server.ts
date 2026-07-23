@@ -521,6 +521,7 @@ app.post("/api/supabase/sync", async (req, res) => {
 let activeSessionUser: User | null = db.users[0]; // defaults to Thayane for ease of preview
 
 app.use((req, res, next) => {
+  console.log(`[API REQUEST] ${req.method} ${req.url}`);
   try {
     db = loadDatabase();
   } catch (err) {
@@ -604,13 +605,13 @@ app.post("/api/auth/register", (req, res) => {
 
 // Aliases for compatibility
 app.post("/api/register", (req, res, next) => {
-  req.url = "/api/auth/register";
-  app(req, res, next);
+  req.url = "/register";
+  next();
 });
 
 app.post("/api/login", (req, res, next) => {
-  req.url = "/api/auth/login";
-  app(req, res, next);
+  req.url = "/login";
+  next();
 });
 
 app.post("/api/auth/logout", (req, res) => {
