@@ -2,22 +2,152 @@
   "users": [
     {
       "id": "1",
-      "name": "Thayane Carvalho",
+      "name": "Taiana Guimaraes",
       "email": "ctbthay@gmail.com",
       "role": "admin",
-      "status": "ativo"
+      "status": "ativo",
+      "password": "venda26@"
     }
   ],
-  "clients": [],
+  "clients": [
+    {
+      "name": "LUCIANO ALVES FERREIRA",
+      "cpfCnpj": "62.664.681/0001-40",
+      "cpf": "06560809900",
+      "cnpj": "62.664.681/0001-40",
+      "telefone": "",
+      "whatsapp": "",
+      "email": "",
+      "endereco": "",
+      "observacoes": "",
+      "status": "ativo",
+      "tags": [],
+      "id": "cli_1784768285619",
+      "historico": [
+        {
+          "id": "h_1784768285619",
+          "data": "2026-07-23",
+          "descricao": "Cadastro do cliente efetuado no sistema.",
+          "responsavel": "Thayane Carvalho"
+        }
+      ]
+    }
+  ],
   "services": [],
   "financial": [],
-  "schedules": [],
+  "schedules": [
+    {
+      "titulo": "EMITIR A GUIA",
+      "descricao": "",
+      "dataInicio": "2026-08-19T19:00",
+      "dataFim": "2026-08-19T00:00",
+      "clienteId": "cli_1784768285619",
+      "categoria": "Entrega",
+      "id": "sch_1784769121018",
+      "clienteNome": "LUCIANO ALVES FERREIRA"
+    }
+  ],
   "passwords": [],
   "passwordAccessLogs": [],
-  "fiscalDeadlines": [],
+  "fiscalDeadlines": [
+    {
+      "titulo": "DAS",
+      "descricao": "JULHO",
+      "prazo": "2026-08-19",
+      "status": "Pendência",
+      "clienteId": "cli_1784768285619",
+      "clienteNome": "LUCIANO ALVES FERREIRA",
+      "valor": 0,
+      "id": "dl_1784769173312"
+    }
+  ],
   "tasks": [],
   "documents": [],
   "logs": [
+    {
+      "id": "log_1784771568756",
+      "usuarioNome": "Taiana Guimaraes",
+      "acao": "Sessão iniciada",
+      "detalhes": "Login efetuado por Taiana Guimaraes (ctbthay@gmail.com).",
+      "timestamp": "2026-07-23T01:52:48.756Z"
+    },
+    {
+      "id": "log_1784771561865",
+      "usuarioNome": "Taiana Guimaraes",
+      "acao": "Perfil Atualizado",
+      "detalhes": "Nome do usuário do e-mail ctbthay@gmail.com alterado para \"Taiana Guimaraes\".",
+      "timestamp": "2026-07-23T01:52:41.865Z"
+    },
+    {
+      "id": "log_1784770195134",
+      "usuarioNome": "Thayane Carvalho",
+      "acao": "Sincronização Supabase",
+      "detalhes": "Sincronização total de tabelas executada.",
+      "timestamp": "2026-07-23T01:29:55.134Z"
+    },
+    {
+      "id": "log_1784769997681",
+      "usuarioNome": "Thayane Carvalho",
+      "acao": "Sincronização Supabase",
+      "detalhes": "Sincronização total de tabelas executada.",
+      "timestamp": "2026-07-23T01:26:37.682Z"
+    },
+    {
+      "id": "log_1784769188790",
+      "usuarioNome": "Thayane Carvalho",
+      "acao": "Modificação Prazo Fiscal",
+      "detalhes": "Status da guia DAS alterada para Pendência.",
+      "timestamp": "2026-07-23T01:13:08.790Z"
+    },
+    {
+      "id": "log_1784769187503",
+      "usuarioNome": "Thayane Carvalho",
+      "acao": "Modificação Prazo Fiscal",
+      "detalhes": "Status da guia DAS alterada para Pago.",
+      "timestamp": "2026-07-23T01:13:07.503Z"
+    },
+    {
+      "id": "log_1784769183215",
+      "usuarioNome": "Thayane Carvalho",
+      "acao": "Modificação Prazo Fiscal",
+      "detalhes": "Status da guia DAS alterada para Guia Emitida.",
+      "timestamp": "2026-07-23T01:13:03.215Z"
+    },
+    {
+      "id": "log_1784769173313",
+      "usuarioNome": "Thayane Carvalho",
+      "acao": "Guia Fiscal Programada",
+      "detalhes": "Novo prazo fiscal cadastrado: DAS da empresa LUCIANO ALVES FERREIRA.",
+      "timestamp": "2026-07-23T01:12:53.313Z"
+    },
+    {
+      "id": "log_1784769121019",
+      "usuarioNome": "Thayane Carvalho",
+      "acao": "Agenda Evento",
+      "detalhes": "Reunião ou compromisso \"EMITIR A GUIA\" agendado.",
+      "timestamp": "2026-07-23T01:12:01.019Z"
+    },
+    {
+      "id": "log_1784768989368",
+      "usuarioNome": "Thayane Carvalho",
+      "acao": "Sincronização Supabase",
+      "detalhes": "Sincronização total de tabelas executada.",
+      "timestamp": "2026-07-23T01:09:49.368Z"
+    },
+    {
+      "id": "log_1784768285620",
+      "usuarioNome": "Thayane Carvalho",
+      "acao": "Criação de Cliente",
+      "detalhes": "Cliente LUCIANO ALVES FERREIRA cadastrado com sucesso.",
+      "timestamp": "2026-07-23T00:58:05.620Z"
+    },
+    {
+      "id": "log_1784768166332",
+      "usuarioNome": "Thayane Carvalho",
+      "acao": "Configuração Supabase",
+      "detalhes": "Chaves do Supabase atualizadas e salvas no .env",
+      "timestamp": "2026-07-23T00:56:06.332Z"
+    },
     {
       "id": "log_init",
       "usuarioNome": "Sistema",
