@@ -37,6 +37,16 @@ export const api = {
       }
       return data;
     },
+    async register(name: string, email: string, password?: string, role?: string): Promise<{ success: boolean; user: User; message?: string }> {
+      const data = await fetchWithAuth("/api/auth/register", {
+        method: "POST",
+        body: JSON.stringify({ name, email, password, role }),
+      });
+      if (data?.user) {
+        localStorage.setItem("erp_user_id", data.user.id);
+      }
+      return data;
+    },
     async logout(): Promise<void> {
       await fetchWithAuth("/api/auth/logout", { method: "POST" });
       localStorage.removeItem("erp_user_id");

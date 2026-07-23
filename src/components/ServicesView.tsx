@@ -37,7 +37,7 @@ export function ServicesView({
   const [tipo, setTipo] = useState<Service["tipo"]>("BPO");
   const [valor, setValor] = useState(1000);
   const [status, setStatus] = useState<Service["status"]>("Pendente");
-  const [responsavel, setResponsavel] = useState("Thayane Carvalho");
+  const [responsavel, setResponsavel] = useState(() => users[0]?.name || "Administrador");
   const [prazo, setPrazo] = useState("");
   const [observacoes, setObservacoes] = useState("");
   const [checklist, setChecklist] = useState<Array<{ id: string; tarefa: string; concluido: boolean }>>([]);
@@ -49,7 +49,7 @@ export function ServicesView({
     setTipo("BPO");
     setValor(1000);
     setStatus("Pendente");
-    setResponsavel("Thayane Carvalho");
+    setResponsavel(users[0]?.name || "Administrador");
     setPrazo(new Date().toISOString().split("T")[0]);
     setObservacoes("");
     setChecklist([]);
@@ -417,7 +417,7 @@ export function ServicesView({
                         </option>
                       ))
                     ) : (
-                      <option value="Thayane Carvalho">Thayane Carvalho</option>
+                      <option value="Administrador">Administrador</option>
                     )}
                   </select>
                 </div>

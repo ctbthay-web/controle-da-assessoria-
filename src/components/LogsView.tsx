@@ -58,7 +58,7 @@ export function LogsView({
     e.preventDefault();
     if (!logAcao.trim() || !logDetalhes.trim()) return;
 
-    const nomeFinal = logUsuario || (users[0] ? users[0].name : "Thayane Carvalho");
+    const nomeFinal = logUsuario || (users[0] ? users[0].name : "Usuário do Sistema");
 
     setSavingLog(true);
     try {
@@ -445,21 +445,30 @@ export function LogsView({
 
             <form onSubmit={handleCreateSubmit} className="space-y-4">
               <div>
-                <label className="block text-zinc-400 text-[10px] font-semibold mb-1.5 uppercase tracking-wider font-mono">Usuário / Colaborador</label>
-                <select
-                  className="w-full bg-[#0c0c0e] border border-white/5 rounded-lg px-3 py-2 text-xs text-zinc-200 focus:outline-none focus:border-blue-500 font-mono"
-                  value={logUsuario}
-                  onChange={(e) => setLogUsuario(e.target.value)}
-                >
-                  {users.map((u) => (
-                    <option key={u.id} value={u.name}>
-                      {u.name} ({u.role === 'admin' ? 'Administrador' : 'Colaborador'})
-                    </option>
-                  ))}
-                  {users.length === 0 && (
-                    <option value="Thayane Carvalho">Thayane Carvalho</option>
+                <label className="block text-zinc-400 text-[10px] font-semibold mb-1.5 uppercase tracking-wider font-mono">Usuário / Responsável pelo Log</label>
+                <div className="space-y-2">
+                  <select
+                    className="w-full bg-[#0c0c0e] border border-white/5 rounded-lg px-3 py-2 text-xs text-zinc-200 focus:outline-none focus:border-blue-500 font-mono"
+                    value={logUsuario}
+                    onChange={(e) => setLogUsuario(e.target.value)}
+                  >
+                    {users.map((u) => (
+                      <option key={u.id} value={u.name}>
+                        {u.name} ({u.role === 'admin' ? 'Administrador' : 'Colaborador'})
+                      </option>
+                    ))}
+                    <option value="outro">+ Digitar outro nome...</option>
+                  </select>
+                  {(!logUsuario || logUsuario === "outro" || !users.some(u => u.name === logUsuario)) && (
+                    <input
+                      type="text"
+                      placeholder="Digite o nome do usuário/responsável"
+                      className="w-full bg-[#0c0c0e] border border-white/5 rounded-lg px-3 py-2 text-xs text-zinc-200 focus:outline-none focus:border-blue-500 placeholder-zinc-650 font-mono"
+                      value={logUsuario === "outro" ? "" : logUsuario}
+                      onChange={(e) => setLogUsuario(e.target.value)}
+                    />
                   )}
-                </select>
+                </div>
               </div>
 
               <div>

@@ -29,7 +29,7 @@ export function TasksView({
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [titulo, setTitulo] = useState("");
   const [prioridade, setPrioridade] = useState<Task["prioridade"]>("Media");
-  const [responsavel, setResponsavel] = useState(() => users[0]?.name || "Thayane Carvalho");
+  const [responsavel, setResponsavel] = useState(() => users[0]?.name || "Administrador");
   const [prazo, setPrazo] = useState("");
   const [checklist, setChecklist] = useState<Array<{ id: string; item: string; concluido: boolean }>>([]);
   const [newCheckItem, setNewCheckItem] = useState("");
@@ -41,7 +41,7 @@ export function TasksView({
   const handleOpenCreate = () => {
     setTitulo("");
     setPrioridade("Media");
-    setResponsavel(users[0]?.name || "Thayane Carvalho");
+    setResponsavel(users[0]?.name || "Administrador");
     setPrazo(new Date().toISOString().split("T")[0]);
     setChecklist([]);
     setNewCheckItem("");
@@ -362,7 +362,7 @@ export function TasksView({
                         </option>
                       ))
                     ) : (
-                      <option value="Thayane Carvalho">Thayane Carvalho</option>
+                      <option value="Administrador">Administrador</option>
                     )}
                   </select>
                 </div>

@@ -44,7 +44,7 @@ export function ReportsView({
     e.preventDefault();
     if (!logAcao.trim() || !logDetalhes.trim()) return;
 
-    const nomeFinal = logUsuario || (users[0] ? users[0].name : "Thayane Carvalho");
+    const nomeFinal = logUsuario || (users[0] ? users[0].name : "Usuário do Sistema");
 
     setSavingLog(true);
     setLogSuccess(false);
@@ -364,7 +364,7 @@ export function ReportsView({
                 </option>
               ))}
               {users.length === 0 && (
-                <option value="Thayane Carvalho">Thayane Carvalho</option>
+                <option value="Administrador">Administrador</option>
               )}
             </select>
           </div>

@@ -72,7 +72,7 @@ export function DashboardView({
     e.preventDefault();
     if (!acao.trim() || !detalhes.trim()) return;
 
-    const nomeFinal = usuarioOpcao || (users[0] ? users[0].name : "Thayane Carvalho");
+    const nomeFinal = usuarioOpcao || (users[0] ? users[0].name : "Usuário do Sistema");
 
     setSaving(true);
     try {
@@ -385,7 +385,7 @@ export function DashboardView({
                     </option>
                   ))}
                   {users.length === 0 && (
-                    <option value="Thayane Carvalho">Thayane Carvalho</option>
+                    <option value="Administrador">Administrador</option>
                   )}
                 </select>
               </div>

@@ -538,21 +538,75 @@ app.use((req, res, next) => {
 // ==========================================
 app.post("/api/auth/login", (req, res) => {
   const { email, password } = req.body;
-  const user = db.users.find(u => u.email === email);
+  const targetEmail = (email || "").trim().toLowerCase();
+  const user = db.users.find(u => u.email.toLowerCase() === targetEmail);
+
   if (user && user.status === "ativo") {
+    // If user has a password set and password parameter was given, check or set it
+    if (password && !user.password) {
+      user.password = password;
+      saveDatabase(db);
+    }
     activeSessionUser = user;
-    addLog(user.name, "Sessão iniciada", `Login do usuário realizado por IP local.`);
+    addLog(user.name, "Sessão iniciada", `Login efetuado por ${user.name} (${user.email}).`);
     res.json({ success: true, user });
+  } else if (!user) {
+    res.status(400).json({ 
+      success: false, 
+      message: "E-mail não encontrado na base. Clique na aba 'Cadastrar Usuário' para definir seu nome e senha." 
+    });
   } else {
-    res.status(401).json({ success: false, message: "E-mail incorreto ou usuário inativo. Dica: Use ctbthay@gmail.com" });
+    res.status(401).json({ success: false, message: "Usuário inativo ou não autorizado." });
   }
+});
+
+app.post("/api/auth/register", (req, res) => {
+  const { name, email, password, role } = req.body;
+  if (!name || !email) {
+    return res.status(400).json({ success: false, message: "Nome e e-mail são obrigatórios para cadastro." });
+  }
+
+  const targetEmail = email.trim().toLowerCase();
+  const existingIndex = db.users.findIndex(u => u.email.toLowerCase() === targetEmail);
+
+  let targetUser: User;
+
+  if (existingIndex !== -1) {
+    // Update existing user with new name, password, role
+    db.users[existingIndex].name = name.trim();
+    if (password) db.users[existingIndex].password = password;
+    if (role) db.users[existingIndex].role = role as any;
+    targetUser = db.users[existingIndex];
+    saveDatabase(db);
+    addLog(targetUser.name, "Perfil Atualizado", `Nome do usuário do e-mail ${targetEmail} alterado para "${targetUser.name}".`);
+  } else {
+    // Register brand new user
+    targetUser = {
+      id: "user_" + Date.now().toString(),
+      name: name.trim(),
+      email: targetEmail,
+      password: password || "",
+      role: (role as any) || "admin",
+      status: "ativo"
+    };
+    db.users.push(targetUser);
+    saveDatabase(db);
+    addLog(targetUser.name, "Cadastro de Usuário", `Novo usuário "${targetUser.name}" (${targetEmail}) cadastrado no sistema.`);
+  }
+
+  activeSessionUser = targetUser;
+  res.json({
+    success: true,
+    user: targetUser,
+    message: "Conta e nome de usuário registrados com sucesso!"
+  });
 });
 
 app.post("/api/auth/logout", (req, res) => {
   if (activeSessionUser) {
     addLog(activeSessionUser.name, "Sessão encerrada", "Logout solicitado pelo painel.");
   }
-  activeSessionUser = db.users[0]; // Reset to main user
+  activeSessionUser = db.users[0] || null; // Reset session
   res.json({ success: true });
 });
 
@@ -562,10 +616,11 @@ app.get("/api/auth/me", (req, res) => {
 
 app.post("/api/auth/recover", (req, res) => {
   const { email } = req.body;
-  const user = db.users.find(u => u.email === email);
+  const targetEmail = (email || "").trim().toLowerCase();
+  const user = db.users.find(u => u.email.toLowerCase() === targetEmail);
   if (user) {
-    addLog(user.name, "Recuperação de Senha", `Solicitado link de redefinição para ${email}`);
-    res.json({ success: true, message: `Um link de redefinição foi enviado para ${email}.` });
+    addLog(user.name, "Recuperação de Senha", `Solicitado link de redefinição para ${targetEmail}`);
+    res.json({ success: true, message: `Um link de redefinição foi enviado para ${targetEmail}.` });
   } else {
     res.status(404).json({ success: false, message: "Este e-mail não está cadastrado no sistema." });
   }
@@ -617,7 +672,7 @@ app.get("/api/audit-logs", (req, res) => {
 
 app.post("/api/audit-logs", (req, res) => {
   const { acao, detalhes, usuarioNome } = req.body;
-  const user = usuarioNome || activeSessionUser?.name || "Thayane Carvalho";
+  const user = usuarioNome || activeSessionUser?.name || "Administrador";
   addLog(user, acao || "Ação Manual", detalhes || "Anotação de log manual.");
   res.status(201).json({ status: "ok", logs: db.logs });
 });
@@ -657,7 +712,7 @@ app.post("/api/clients", (req, res) => {
       id: "h_" + Date.now().toString(),
       data: new Date().toISOString().split("T")[0],
       descricao: "Cadastro do cliente efetuado no sistema.",
-      responsavel: activeSessionUser?.name || "Thayane Carvalho"
+      responsavel: activeSessionUser?.name || "Administrador"
     }]
   };
   db.clients.unshift(newClient);
@@ -695,7 +750,7 @@ app.post("/api/clients/:id/history", (req, res) => {
       id: "h_" + Date.now().toString(),
       data: new Date().toISOString().split("T")[0],
       descricao,
-      responsavel: activeSessionUser?.name || "Thayane Carvalho"
+      responsavel: activeSessionUser?.name || "Administrador"
     };
     client.historico.unshift(historicalEvent);
     saveDatabase(db);
@@ -891,13 +946,13 @@ app.get("/api/passwords/:id/decrypt", (req, res) => {
       id: "p_acc_" + Date.now().toString(),
       vaultId: item.id,
       titulo: item.titulo,
-      usuarioNome: activeSessionUser?.name || "Thayane Carvalho",
+      usuarioNome: activeSessionUser?.name || "Administrador",
       timestamp: new Date().toISOString()
     };
     db.passwordAccessLogs.unshift(newLog);
     saveDatabase(db);
     syncSingleItemToSupabase("password_access_logs", newLog);
-    addLog(activeSessionUser?.name || "Thayane Carvalho", "Exibição de Senha", `Acessada credencial de "${item.titulo}"`);
+    addLog(activeSessionUser?.name || "Administrador", "Exibição de Senha", `Acessada credencial de "${item.titulo}"`);
     res.json({ decrypted: item.senhaObfuscated });
   } else {
     res.status(404).json({ error: "Senha não localizada" });
@@ -1009,7 +1064,7 @@ app.post("/api/tasks", (req, res) => {
     id: "tsk_" + Date.now().toString(),
     titulo: req.body.titulo || "Nova Tarefa",
     prioridade: req.body.prioridade || "Media",
-    responsavel: req.body.responsavel || activeSessionUser?.name || "Thayane Carvalho",
+    responsavel: req.body.responsavel || activeSessionUser?.name || "Administrador",
     status: req.body.status || "Pendente",
     checklist: req.body.checklist || [],
     comentarios: [],
@@ -1045,7 +1100,7 @@ app.post("/api/tasks/:id/comment", (req, res) => {
   if (task) {
     task.comentarios.push({
       id: "tc_" + Date.now().toString(),
-      autor: activeSessionUser?.name || "Thayane Carvalho",
+      autor: activeSessionUser?.name || "Administrador",
       data: new Date().toISOString().split("T")[0],
       texto: req.body.texto
     });
