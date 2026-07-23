@@ -6,20 +6,6 @@
       "email": "ctbthay@gmail.com",
       "role": "admin",
       "status": "ativo"
-    },
-    {
-      "id": "2",
-      "name": "Carlos Souza",
-      "email": "carlos@contabil.com",
-      "role": "colaborador",
-      "status": "ativo"
-    },
-    {
-      "id": "3",
-      "name": "Beatriz Lima",
-      "email": "beatriz@contabil.com",
-      "role": "colaborador",
-      "status": "ativo"
     }
   ],
   "clients": [],

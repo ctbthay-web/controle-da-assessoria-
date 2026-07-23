@@ -1,12 +1,16 @@
 import express from "express";
 import path from "path";
 import fs from "fs";
+import dotenv from "dotenv";
+import { createClient } from "@supabase/supabase-js";
 import { createServer as createViteServer } from "vite";
 import { 
   User, Client, Service, FinancialEntry, ScheduleEvent, 
   PasswordVault, PasswordAccessLog, FiscalDeadline, Task, 
   DocumentInfo, AuditLog 
 } from "./src/types";
+
+dotenv.config();
 
 const app = express();
 const PORT = 3000;
@@ -16,6 +20,23 @@ app.use(express.json({ limit: "50mb" }));
 app.use(express.urlencoded({ limit: "50mb", extended: true }));
 
 const DB_FILE = path.join(process.cwd(), "database.json");
+
+// Helper to get active Supabase client
+function getSupabaseBackend(customUrl?: string, customKey?: string) {
+  const url = customUrl || process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL;
+  const key = customKey || process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_ANON_KEY || process.env.VITE_SUPABASE_ANON_KEY;
+  
+  if (url && key) {
+    try {
+      return createClient(url, key, {
+        auth: { persistSession: false, autoRefreshToken: false }
+      });
+    } catch (e) {
+      console.error("Erro ao instanciar cliente Supabase no servidor:", e);
+    }
+  }
+  return null;
+}
 
 // Helper interface for full DB
 interface AppDatabase {
@@ -286,13 +307,225 @@ function addLog(usuarioNome: string, acao: string, detalhes: string) {
     db.logs = db.logs.slice(0, 300);
   }
   saveDatabase(db);
+  syncSingleItemToSupabase("audit_logs", newLog);
 }
+
+// Supabase Real-Time Persistence Helpers
+function prepareItemForSupabase(item: any) {
+  if (!item || typeof item !== "object") return item;
+  const clean: any = {};
+  for (const key of Object.keys(item)) {
+    let val = item[key];
+    if (typeof val === "object" && val !== null) {
+      val = JSON.parse(JSON.stringify(val));
+    }
+    clean[key] = val;
+    // Provide snake_case alias for camelCase keys if different (e.g., clienteNome -> cliente_nome)
+    const snakeKey = key.replace(/([A-Z])/g, "_$1").toLowerCase();
+    if (snakeKey !== key && clean[snakeKey] === undefined) {
+      clean[snakeKey] = val;
+    }
+  }
+  return clean;
+}
+
+async function syncSingleItemToSupabase(tableName: string, item: any) {
+  const sb = getSupabaseBackend();
+  if (!sb) return;
+  try {
+    let currentItem = prepareItemForSupabase(item);
+    let attempts = 0;
+    while (attempts < 20) {
+      attempts++;
+      const { error } = await sb.from(tableName).upsert(currentItem, { onConflict: "id" });
+      if (!error) {
+        console.log(`[Supabase Auto-Sync] Item ${item.id} sincronizado com sucesso na tabela ${tableName}`);
+        return;
+      }
+      
+      const msg = error.message || "";
+      // Match missing column error patterns from PostgREST / Supabase
+      const match = msg.match(/Could not find the '([^']+)' column/i) || msg.match(/column "([^"]+)" of relation/i) || msg.match(/Could not find the "([^"]+)" column/i);
+      if (match && match[1]) {
+        const missingCol = match[1];
+        console.warn(`[Supabase Auto-Sync] Tabela ${tableName} não possui a coluna '${missingCol}'. Removendo do payload.`);
+        delete currentItem[missingCol];
+        continue; // Retry upsert without the non-existent column
+      } else {
+        console.error(`[Supabase Auto-Sync] Erro ao salvar na tabela ${tableName}:`, msg);
+        break;
+      }
+    }
+  } catch (err: any) {
+    console.error(`[Supabase Auto-Sync] Falha na conexão com Supabase (${tableName}):`, err?.message || err);
+  }
+}
+
+async function deleteSingleItemFromSupabase(tableName: string, id: string) {
+  const sb = getSupabaseBackend();
+  if (!sb) return;
+  try {
+    const { error } = await sb.from(tableName).delete().eq("id", id);
+    if (error) {
+      console.error(`[Supabase Auto-Sync] Erro ao excluir id ${id} da tabela ${tableName}:`, error.message);
+    }
+  } catch (err: any) {
+    console.error(`[Supabase Auto-Sync] Falha ao excluir do Supabase (${tableName}):`, err?.message || err);
+  }
+}
+
+async function syncAllDataToSupabase(sb: any, currentDb: AppDatabase) {
+  const results: Record<string, { count: number; error?: string }> = {};
+
+  const tables: Array<{ name: string; data: any[] }> = [
+    { name: "clients", data: currentDb.clients || [] },
+    { name: "services", data: currentDb.services || [] },
+    { name: "financial", data: currentDb.financial || [] },
+    { name: "schedules", data: currentDb.schedules || [] },
+    { name: "passwords", data: currentDb.passwords || [] },
+    { name: "fiscal_deadlines", data: currentDb.fiscalDeadlines || [] },
+    { name: "tasks", data: currentDb.tasks || [] },
+    { name: "documents", data: currentDb.documents || [] },
+    { name: "audit_logs", data: currentDb.logs || [] },
+  ];
+
+  for (const t of tables) {
+    if (t.data.length === 0) {
+      results[t.name] = { count: 0 };
+      continue;
+    }
+
+    let successCount = 0;
+    let lastError: string | undefined = undefined;
+
+    // First try bulk insert
+    let cleanData = t.data.map(item => prepareItemForSupabase(item));
+    let { error } = await sb.from(t.name).upsert(cleanData, { onConflict: "id" });
+
+    if (!error) {
+      results[t.name] = { count: t.data.length };
+    } else {
+      console.warn(`[Supabase Sync] Bulk upsert falhou para ${t.name}: ${error.message}. Tentando item a item...`);
+      lastError = error.message;
+
+      // Fallback: sync item by item with smart column stripping if columns are missing in Supabase table
+      for (const item of t.data) {
+        let singlePayload = prepareItemForSupabase(item);
+        let attempts = 0;
+        let itemSuccess = false;
+
+        while (attempts < 20) {
+          attempts++;
+          const res = await sb.from(t.name).upsert(singlePayload, { onConflict: "id" });
+          if (!res.error) {
+            itemSuccess = true;
+            break;
+          }
+          const msg = res.error.message || "";
+          const match = msg.match(/Could not find the '([^']+)' column/i) || msg.match(/column "([^"]+)" of relation/i) || msg.match(/Could not find the "([^"]+)" column/i);
+          if (match && match[1]) {
+            delete singlePayload[match[1]];
+            continue;
+          } else {
+            lastError = msg;
+            break;
+          }
+        }
+
+        if (itemSuccess) {
+          successCount++;
+        }
+      }
+
+      results[t.name] = {
+        count: successCount,
+        error: successCount === t.data.length ? undefined : lastError
+      };
+    }
+  }
+
+  return results;
+}
+
+// ==========================================
+// SUPABASE CONFIGURATION & SYNC API
+// ==========================================
+app.get("/api/supabase/status", (req, res) => {
+  const url = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL || "";
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_ANON_KEY || process.env.VITE_SUPABASE_ANON_KEY || "";
+  
+  res.json({
+    configured: !!(url && key),
+    url: url ? url.replace(/https:\/\/(.*?)\.supabase\.co.*/, "$1.supabase.co") : "",
+    hasKey: !!key,
+  });
+});
+
+app.post("/api/supabase/save-config", (req, res) => {
+  const { supabaseUrl, supabaseKey } = req.body;
+  if (!supabaseUrl || !supabaseKey) {
+    return res.status(400).json({ error: "URL e Chave do Supabase são obrigatórios." });
+  }
+
+  try {
+    process.env.SUPABASE_URL = supabaseUrl.trim();
+    process.env.VITE_SUPABASE_URL = supabaseUrl.trim();
+    process.env.SUPABASE_SERVICE_ROLE_KEY = supabaseKey.trim();
+    process.env.SUPABASE_ANON_KEY = supabaseKey.trim();
+    process.env.VITE_SUPABASE_ANON_KEY = supabaseKey.trim();
+
+    // Write to .env file for persistence
+    const envPath = path.join(process.cwd(), ".env");
+    const envContent = `SUPABASE_URL=${supabaseUrl.trim()}
+VITE_SUPABASE_URL=${supabaseUrl.trim()}
+SUPABASE_ANON_KEY=${supabaseKey.trim()}
+VITE_SUPABASE_ANON_KEY=${supabaseKey.trim()}
+SUPABASE_SERVICE_ROLE_KEY=${supabaseKey.trim()}
+`;
+    fs.writeFileSync(envPath, envContent, "utf-8");
+
+    addLog(activeSessionUser?.name || "Sistema", "Configuração Supabase", "Chaves do Supabase atualizadas e salvas no .env");
+    res.json({ success: true, message: "Credenciais salvas com sucesso!" });
+  } catch (err: any) {
+    res.status(500).json({ error: "Erro ao salvar .env: " + err?.message });
+  }
+});
+
+app.post("/api/supabase/sync", async (req, res) => {
+  const { customUrl, customKey } = req.body || {};
+  const sb = getSupabaseBackend(customUrl, customKey);
+
+  if (!sb) {
+    return res.status(400).json({
+      error: "Supabase não está configurado. Forneça a URL e a Chave de API (Service Role ou Anon Key)."
+    });
+  }
+
+  try {
+    const syncResults = await syncAllDataToSupabase(sb, db);
+    addLog(activeSessionUser?.name || "Sistema", "Sincronização Supabase", "Sincronização total de tabelas executada.");
+    res.json({
+      success: true,
+      message: "Tabelas sincronizadas com o Supabase com sucesso!",
+      results: syncResults
+    });
+  } catch (err: any) {
+    res.status(500).json({
+      error: "Erro na sincronização: " + (err?.message || err)
+    });
+  }
+});
 
 // REST Middlewares
 // Simulated simple cookie/session check or auth token simulation for API safety
 let activeSessionUser: User | null = db.users[0]; // defaults to Thayane for ease of preview
 
 app.use((req, res, next) => {
+  try {
+    db = loadDatabase();
+  } catch (err) {
+    console.error("Erro ao reler database.json:", err);
+  }
   // Simple simulator header
   const userHeader = req.headers["x-user-id"] || "1";
   const user = db.users.find(u => u.id === userHeader) || db.users[0];
@@ -389,6 +622,26 @@ app.post("/api/audit-logs", (req, res) => {
   res.status(201).json({ status: "ok", logs: db.logs });
 });
 
+app.delete("/api/audit-logs/clear", (req, res) => {
+  db.logs = [];
+  saveDatabase(db);
+  addLog(activeSessionUser?.name || "Sistema", "Limpeza de Histórico", "Todos os registros de audit logs foram redefinidos.");
+  res.json({ success: true, logs: db.logs });
+});
+
+app.delete("/api/audit-logs/:id", (req, res) => {
+  const { id } = req.params;
+  const logItem = db.logs.find(l => l.id === id);
+  if (logItem) {
+    db.logs = db.logs.filter(l => l.id !== id);
+    saveDatabase(db);
+    deleteSingleItemFromSupabase("audit_logs", id);
+    res.json({ success: true });
+  } else {
+    res.status(404).json({ error: "Log não localizado" });
+  }
+});
+
 // ==========================================
 // 3. CLIENTS CRUD
 // ==========================================
@@ -409,6 +662,7 @@ app.post("/api/clients", (req, res) => {
   };
   db.clients.unshift(newClient);
   saveDatabase(db);
+  syncSingleItemToSupabase("clients", newClient);
   addLog(activeSessionUser?.name || "Sistema", "Criação de Cliente", `Cliente ${newClient.name} cadastrado com sucesso.`);
   res.status(201).json(newClient);
 });
@@ -424,6 +678,7 @@ app.put("/api/clients/:id", (req, res) => {
       id // retain ID
     };
     saveDatabase(db);
+    syncSingleItemToSupabase("clients", db.clients[index]);
     addLog(activeSessionUser?.name || "Sistema", "Atualização de Cliente", `Cliente ${db.clients[index].name} alterado.`);
     res.json(db.clients[index]);
   } else {
@@ -444,6 +699,7 @@ app.post("/api/clients/:id/history", (req, res) => {
     };
     client.historico.unshift(historicalEvent);
     saveDatabase(db);
+    syncSingleItemToSupabase("clients", client);
     addLog(activeSessionUser?.name || "Sistema", "Atualização Histórico Cliente", `Novo histórico adicionado para ${client.name}`);
     res.json(client);
   } else {
@@ -457,6 +713,7 @@ app.delete("/api/clients/:id", (req, res) => {
   if (client) {
     db.clients = db.clients.filter(c => c.id !== id);
     saveDatabase(db);
+    deleteSingleItemFromSupabase("clients", id);
     addLog(activeSessionUser?.name || "Sistema", "Arquivamento/Remoção de Cliente", `Cliente ${client.name} foi arquivado ou removido.`);
     res.json({ success: true });
   } else {
@@ -485,6 +742,7 @@ app.post("/api/services", (req, res) => {
 
   db.services.push(newService);
   saveDatabase(db);
+  syncSingleItemToSupabase("services", newService);
   addLog(activeSessionUser?.name || "Sistema", "Criação de Serviço", `Serviço ${newService.tipo} adicionado para ${clientNome}.`);
   res.status(201).json(newService);
 });
@@ -503,6 +761,7 @@ app.put("/api/services/:id", (req, res) => {
       id
     };
     saveDatabase(db);
+    syncSingleItemToSupabase("services", db.services[index]);
     addLog(activeSessionUser?.name || "Sistema", "Atualização de Serviço", `Serviço ${db.services[index].tipo} atualizado.`);
     res.json(db.services[index]);
   } else {
@@ -511,8 +770,14 @@ app.put("/api/services/:id", (req, res) => {
 });
 
 app.delete("/api/services/:id", (req, res) => {
-  db.services = db.services.filter(s => s.id !== req.params.id);
+  const id = req.params.id;
+  const srv = db.services.find(s => s.id === id);
+  db.services = db.services.filter(s => s.id !== id);
   saveDatabase(db);
+  deleteSingleItemFromSupabase("services", id);
+  if (srv) {
+    addLog(activeSessionUser?.name || "Sistema", "Exclusão de Serviço", `Serviço ${srv.tipo} de ${srv.clienteNome || 'Cliente'} foi removido.`);
+  }
   res.json({ success: true });
 });
 
@@ -534,6 +799,7 @@ app.post("/api/schedules", (req, res) => {
   };
   db.schedules.push(newEvent);
   saveDatabase(db);
+  syncSingleItemToSupabase("schedules", newEvent);
   addLog(activeSessionUser?.name || "Sistema", "Agenda Evento", `Reunião ou compromisso "${newEvent.titulo}" agendado.`);
   res.status(201).json(newEvent);
 });
@@ -548,6 +814,7 @@ app.put("/api/schedules/:id", (req, res) => {
       id
     };
     saveDatabase(db);
+    syncSingleItemToSupabase("schedules", db.schedules[index]);
     res.json(db.schedules[index]);
   } else {
     res.status(404).json({ error: "Compromisso não localizado" });
@@ -555,8 +822,10 @@ app.put("/api/schedules/:id", (req, res) => {
 });
 
 app.delete("/api/schedules/:id", (req, res) => {
-  db.schedules = db.schedules.filter(s => s.id !== req.params.id);
+  const id = req.params.id;
+  db.schedules = db.schedules.filter(s => s.id !== id);
   saveDatabase(db);
+  deleteSingleItemFromSupabase("schedules", id);
   res.json({ success: true });
 });
 
@@ -576,6 +845,7 @@ app.post("/api/financial", (req, res) => {
   };
   db.financial.push(newEntry);
   saveDatabase(db);
+  syncSingleItemToSupabase("financial", newEntry);
   addLog(activeSessionUser?.name || "Sistema", "Movimento Financeiro", `Registro ${newEntry.tipo} lançado no valor de R$ ${newEntry.valor}.`);
   res.status(201).json(newEntry);
 });
@@ -590,6 +860,7 @@ app.put("/api/financial/:id", (req, res) => {
       id
     };
     saveDatabase(db);
+    syncSingleItemToSupabase("financial", db.financial[index]);
     res.json(db.financial[index]);
   } else {
     res.status(404).json({ error: "Lançamento não localizado" });
@@ -597,8 +868,10 @@ app.put("/api/financial/:id", (req, res) => {
 });
 
 app.delete("/api/financial/:id", (req, res) => {
-  db.financial = db.financial.filter(f => f.id !== req.params.id);
+  const id = req.params.id;
+  db.financial = db.financial.filter(f => f.id !== id);
   saveDatabase(db);
+  deleteSingleItemFromSupabase("financial", id);
   res.json({ success: true });
 });
 
@@ -623,6 +896,7 @@ app.get("/api/passwords/:id/decrypt", (req, res) => {
     };
     db.passwordAccessLogs.unshift(newLog);
     saveDatabase(db);
+    syncSingleItemToSupabase("password_access_logs", newLog);
     addLog(activeSessionUser?.name || "Thayane Carvalho", "Exibição de Senha", `Acessada credencial de "${item.titulo}"`);
     res.json({ decrypted: item.senhaObfuscated });
   } else {
@@ -644,6 +918,7 @@ app.post("/api/passwords", (req, res) => {
   };
   db.passwords.push(entry);
   saveDatabase(db);
+  syncSingleItemToSupabase("passwords", entry);
   addLog(activeSessionUser?.name || "Sistema", "Criação de Senha", `Cadastrado nova senha de acesso para ${entry.titulo}.`);
   res.status(201).json(entry);
 });
@@ -659,6 +934,7 @@ app.put("/api/passwords/:id", (req, res) => {
       id
     };
     saveDatabase(db);
+    syncSingleItemToSupabase("passwords", db.passwords[index]);
     addLog(activeSessionUser?.name || "Sistema", "Modificação de Senha", `Credencial de ${db.passwords[index].titulo} alterada.`);
     res.json(db.passwords[index]);
   } else {
@@ -667,8 +943,10 @@ app.put("/api/passwords/:id", (req, res) => {
 });
 
 app.delete("/api/passwords/:id", (req, res) => {
-  db.passwords = db.passwords.filter(p => p.id !== req.params.id);
+  const id = req.params.id;
+  db.passwords = db.passwords.filter(p => p.id !== id);
   saveDatabase(db);
+  deleteSingleItemFromSupabase("passwords", id);
   res.json({ success: true });
 });
 
@@ -688,6 +966,7 @@ app.post("/api/fiscal-deadlines", (req, res) => {
   };
   db.fiscalDeadlines.push(entry);
   saveDatabase(db);
+  syncSingleItemToSupabase("fiscal_deadlines", entry);
   addLog(activeSessionUser?.name || "Sistema", "Guia Fiscal Programada", `Novo prazo fiscal cadastrado: ${entry.titulo} da empresa ${entry.clienteNome}.`);
   res.status(201).json(entry);
 });
@@ -702,6 +981,7 @@ app.put("/api/fiscal-deadlines/:id", (req, res) => {
       id
     };
     saveDatabase(db);
+    syncSingleItemToSupabase("fiscal_deadlines", db.fiscalDeadlines[index]);
     addLog(activeSessionUser?.name || "Sistema", "Modificação Prazo Fiscal", `Status da guia ${db.fiscalDeadlines[index].titulo} alterada para ${db.fiscalDeadlines[index].status}.`);
     res.json(db.fiscalDeadlines[index]);
   } else {
@@ -710,8 +990,10 @@ app.put("/api/fiscal-deadlines/:id", (req, res) => {
 });
 
 app.delete("/api/fiscal-deadlines/:id", (req, res) => {
-  db.fiscalDeadlines = db.fiscalDeadlines.filter(d => d.id !== req.params.id);
+  const id = req.params.id;
+  db.fiscalDeadlines = db.fiscalDeadlines.filter(d => d.id !== id);
   saveDatabase(db);
+  deleteSingleItemFromSupabase("fiscal_deadlines", id);
   res.json({ success: true });
 });
 
@@ -735,6 +1017,7 @@ app.post("/api/tasks", (req, res) => {
   };
   db.tasks.push(entry);
   saveDatabase(db);
+  syncSingleItemToSupabase("tasks", entry);
   addLog(activeSessionUser?.name || "Sistema", "Nova Tarefa Contábil", `Tarefa Interna "${entry.titulo}" atribuída para ${entry.responsavel}.`);
   res.status(201).json(entry);
 });
@@ -749,6 +1032,7 @@ app.put("/api/tasks/:id", (req, res) => {
       id
     };
     saveDatabase(db);
+    syncSingleItemToSupabase("tasks", db.tasks[index]);
     res.json(db.tasks[index]);
   } else {
     res.status(404).json({ error: "Tarefa não localizada" });
@@ -766,6 +1050,7 @@ app.post("/api/tasks/:id/comment", (req, res) => {
       texto: req.body.texto
     });
     saveDatabase(db);
+    syncSingleItemToSupabase("tasks", task);
     res.json(task);
   } else {
     res.status(404).json({ error: "Tarefa não encontrada" });
@@ -773,8 +1058,10 @@ app.post("/api/tasks/:id/comment", (req, res) => {
 });
 
 app.delete("/api/tasks/:id", (req, res) => {
-  db.tasks = db.tasks.filter(t => t.id !== req.params.id);
+  const id = req.params.id;
+  db.tasks = db.tasks.filter(t => t.id !== id);
   saveDatabase(db);
+  deleteSingleItemFromSupabase("tasks", id);
   res.json({ success: true });
 });
 
@@ -800,6 +1087,7 @@ app.post("/api/documents", (req, res) => {
   };
   db.documents.push(newDoc);
   saveDatabase(db);
+  syncSingleItemToSupabase("documents", newDoc);
   addLog(activeSessionUser?.name || "Sistema", "Upload de Documento", `Documento "${newDoc.nome}" anexado à ficha do cliente ${clientNome}.`);
   res.status(201).json(newDoc);
 });
@@ -808,6 +1096,7 @@ app.delete("/api/documents/:id", (req, res) => {
   const { id } = req.params;
   db.documents = db.documents.filter(d => d.id !== id);
   saveDatabase(db);
+  deleteSingleItemFromSupabase("documents", id);
   res.json({ success: true });
 });
 
@@ -840,6 +1129,36 @@ app.post("/api/users", (req, res) => {
   saveDatabase(db);
   addLog(activeSessionUser?.name || "Sistema", "Cadastro de Usuário", `Novo usuário ${name} (${email}) adicionado com sucesso.`);
   res.status(201).json(newUser);
+});
+
+app.put("/api/users/:id", (req, res) => {
+  const { id } = req.params;
+  const index = db.users.findIndex(u => u.id === id);
+  if (index !== -1) {
+    db.users[index] = {
+      ...db.users[index],
+      ...req.body,
+      id
+    };
+    saveDatabase(db);
+    addLog(activeSessionUser?.name || "Sistema", "Alteração de Usuário", `Dados do usuário ${db.users[index].name} atualizados.`);
+    res.json(db.users[index]);
+  } else {
+    res.status(404).json({ error: "Usuário não localizado" });
+  }
+});
+
+app.delete("/api/users/:id", (req, res) => {
+  const { id } = req.params;
+  const userToDelete = db.users.find(u => u.id === id);
+  if (userToDelete) {
+    db.users = db.users.filter(u => u.id !== id);
+    saveDatabase(db);
+    addLog(activeSessionUser?.name || "Sistema", "Exclusão de Usuário", `Usuário ${userToDelete.name} removido do sistema.`);
+    res.json({ success: true });
+  } else {
+    res.status(404).json({ error: "Usuário não localizado" });
+  }
 });
 
 

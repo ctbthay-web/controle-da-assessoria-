@@ -1,9 +1,9 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { 
   FileText, Download, Briefcase, Users, TrendingUp, AlertCircle, Sparkles, CheckSquare,
   ShieldCheck, RefreshCw, Database, KeyRound, AlertTriangle, Eye, EyeOff
 } from "lucide-react";
-import { Client, Service, FinancialEntry, Task, FiscalDeadline } from "../types";
+import { Client, Service, FinancialEntry, Task, FiscalDeadline, User } from "../types";
 import { getSupabase } from "../lib/supabase";
 
 interface ReportsViewProps {
@@ -12,6 +12,8 @@ interface ReportsViewProps {
   financial: FinancialEntry[];
   tasks: Task[];
   deadlines: FiscalDeadline[];
+  users?: User[];
+  onCreateLog?: (acao: string, detalhes: string, usuarioNome?: string) => Promise<void>;
 }
 
 export function ReportsView({
@@ -19,9 +21,48 @@ export function ReportsView({
   services,
   financial,
   tasks,
-  deadlines
+  deadlines,
+  users = [],
+  onCreateLog
 }: ReportsViewProps) {
   
+  // Log manual fields state
+  const [logAcao, setLogAcao] = useState("");
+  const [logDetalhes, setLogDetalhes] = useState("");
+  const [logUsuario, setLogUsuario] = useState("");
+  const [savingLog, setSavingLog] = useState(false);
+  const [logSuccess, setLogSuccess] = useState(false);
+
+  // Set default log user
+  useEffect(() => {
+    if (users && users.length > 0 && !logUsuario) {
+      setLogUsuario(users[0].name);
+    }
+  }, [users, logUsuario]);
+
+  const handleSubmitLog = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!logAcao.trim() || !logDetalhes.trim()) return;
+
+    const nomeFinal = logUsuario || (users[0] ? users[0].name : "Thayane Carvalho");
+
+    setSavingLog(true);
+    setLogSuccess(false);
+    try {
+      if (onCreateLog) {
+        await onCreateLog(logAcao.trim(), logDetalhes.trim(), nomeFinal);
+      }
+      setLogAcao("");
+      setLogDetalhes("");
+      setLogSuccess(true);
+      setTimeout(() => setLogSuccess(false), 5500);
+    } catch {
+      alert("Erro ao criar registro de log.");
+    } finally {
+      setSavingLog(false);
+    }
+  };
+
   // Supabase Diagnostics State
   const [supabaseStatus, setSupabaseStatus] = useState<"idle" | "testing" | "success" | "error">("idle");
   const [supabaseMessage, setSupabaseMessage] = useState<string>("");
@@ -65,11 +106,11 @@ export function ReportsView({
         }
       } else {
         setSupabaseStatus("success");
-        setSupabaseMessage(`Conexão bem sucedida em tempo real! Latência de rede: ${durationMs}ms. O banco está se comunicando de forma integrada.`);
+        setSupabaseMessage(`Conexão bem-sucedida em tempo real! Latência de rede: ${durationMs}ms. O banco está se comunicando de forma integrada.`);
       }
     } catch (err: any) {
       setSupabaseStatus("error");
-      setSupabaseMessage(err.message || "A requisição falhou devido a falta de credenciais ou um erro de rede. Certifique-se de configurar as variáveis no menu de configurações.");
+      setSupabaseMessage(err.message || "A requisição falhou devido à falta de credenciais ou um erro de rede. Certifique-se de configurar as variáveis no menu de configurações.");
     }
   };
 
@@ -140,10 +181,10 @@ export function ReportsView({
       `Data de Extração: ${new Date().toLocaleDateString("pt-BR")}`,
       "---------------------------------------------",
       "",
-      `BPO Fianceiro: ${bpoCount} contratos`,
+      `BPO Financeiro: ${bpoCount} contratos`,
       `IRPF PF: ${irpfCount} demandas`,
       `Processos de Regularização: ${regularCount} andamentos`,
-      `Outros demandas mapeadas: ${otherCount} andamentos`,
+      `Outras demandas mapeadas: ${otherCount} andamentos`,
       "",
       "--- LISTA DE PROCESSOS DETALHADOS ---",
       ...services.map(s => `* [${s.tipo}] ${s.clienteNome} | Operador: ${s.responsavel} | Prazo: ${s.prazo} | Honorário: R$ ${s.valor.toFixed(2)} [Status: ${s.status}]`)
@@ -170,7 +211,7 @@ export function ReportsView({
               </div>
               <h3 className="font-bold text-xs text-white font-mono uppercase tracking-wider">Honorários e Caixa</h3>
             </div>
-            <p className="text-xs text-zinc-450 leading-relaxed">
+            <p className="text-xs text-zinc-400 leading-relaxed">
               Controle absoluto de DRE, fluxo de provisões operacionais de honorários mensais e despesas.
             </p>
             <div className="pt-2 text-[11px] space-y-2 font-mono text-zinc-400">
@@ -263,71 +304,119 @@ export function ReportsView({
       <div className="bg-[#111113] border border-white/5 rounded-xl p-6 shadow-md">
         <h3 className="font-bold text-xs text-zinc-400 uppercase tracking-widest font-mono text-left mb-4">Relatório de Produtividade do Time</h3>
         
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 text-center text-xs">
-          <div className="p-4 bg-[#0c0c0e] border border-white/5 rounded-xl flex flex-col justify-between">
-            <div>
-              <h4 className="font-bold text-white text-sm">{clients[0]?.name ? "Thayane Carvalho" : "Thayane Carvalho"}</h4>
-              <span className="text-[10px] text-blue-400 font-bold uppercase block font-mono mt-1">Sócio-Administrador</span>
-              
-              <div className="mt-4 grid grid-cols-2 gap-2 text-[11px] text-zinc-400 font-mono">
-                <div className="bg-[#111113] border border-white/5 p-2 rounded-lg text-left">
-                  <span className="block text-[9px] uppercase text-zinc-500">Serviços</span>
-                  <strong className="text-white text-xs">
-                    {services.filter(s => s.responsavel === "Thayane Carvalho").length} ativos
-                  </strong>
-                </div>
-                <div className="bg-[#111113] border border-white/5 p-2 rounded-lg text-left">
-                  <span className="block text-[9px] uppercase text-zinc-500">Ações</span>
-                  <strong className="text-white text-xs">Geral</strong>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 text-center text-xs animate-in fade-in duration-200">
+          {users.map((member) => {
+            const isManager = member.role === "admin";
+            const roleLabel = isManager ? "Sócio-Administrador" : "Colaborador Interno";
+            return (
+              <div key={member.id} className="p-4 bg-[#0c0c0e] border border-white/5 rounded-xl flex flex-col justify-between">
+                <div>
+                  <h4 className="font-bold text-white text-sm">{member.name}</h4>
+                  <span className="text-[10px] text-blue-400 font-bold uppercase block font-mono mt-1">{roleLabel}</span>
+                  
+                  <div className="mt-4 grid grid-cols-2 gap-2 text-[11px] text-zinc-400 font-mono">
+                    <div className="bg-[#111113] border border-white/5 p-2 rounded-lg text-left">
+                      <span className="block text-[9px] uppercase text-zinc-500">Serviços</span>
+                      <strong className="text-white text-xs">
+                        {services.filter(s => s.responsavel === member.name).length} ativos
+                      </strong>
+                    </div>
+                    <div className="bg-[#111113] border border-white/5 p-2 rounded-lg text-left">
+                      <span className="block text-[9px] uppercase text-zinc-500">{isManager ? "Ações" : "Tarefas"}</span>
+                      <strong className="text-white text-xs">
+                        {isManager 
+                          ? "Geral" 
+                          : `${tasks.filter(t => t.responsavel === member.name && t.status !== "Concluida").length} pnd`
+                        }
+                      </strong>
+                    </div>
+                  </div>
                 </div>
               </div>
-            </div>
-          </div>
+            );
+          })}
+        </div>
+      </div>
 
-          <div className="p-4 bg-[#0c0c0e] border border-white/5 rounded-xl flex flex-col justify-between">
-            <div>
-              <h4 className="font-bold text-white text-sm">Carlos Souza</h4>
-              <span className="text-[10px] text-blue-400 font-bold uppercase block font-mono mt-1">Colaborador Fiscal</span>
-              
-              <div className="mt-4 grid grid-cols-2 gap-2 text-[11px] text-zinc-400 font-mono">
-                <div className="bg-[#111113] border border-white/5 p-2 rounded-lg text-left">
-                  <span className="block text-[9px] uppercase text-zinc-500">Serviços</span>
-                  <strong className="text-white text-xs">
-                    {services.filter(s => s.responsavel === "Carlos Souza").length} ativos
-                  </strong>
-                </div>
-                <div className="bg-[#111113] border border-white/5 p-2 rounded-lg text-left">
-                  <span className="block text-[9px] uppercase text-zinc-500">Tarefas</span>
-                  <strong className="text-white text-xs">
-                    {tasks.filter(t => t.responsavel === "Carlos Souza" && t.status !== "Concluida").length} pnd
-                  </strong>
-                </div>
-              </div>
-            </div>
+      {/* Campo para criar log manual abaixo dos relatórios */}
+      <div className="bg-[#111113] border border-white/5 rounded-xl p-6 shadow-md text-left animate-in fade-in duration-200">
+        <div className="flex items-center gap-3 mb-4 pb-3 border-b border-white/[0.04]">
+          <div className="p-2.5 bg-blue-600/10 border border-blue-500/20 text-blue-400 rounded-lg">
+            <CheckSquare className="w-5 h-5" />
           </div>
-
-          <div className="p-4 bg-[#0c0c0e] border border-white/5 rounded-xl flex flex-col justify-between">
-            <div>
-              <h4 className="font-bold text-white text-sm">Beatriz Lima</h4>
-              <span className="text-[10px] text-blue-400 font-bold uppercase block font-mono mt-1">Auxiliar de Atendimento</span>
-              
-              <div className="mt-4 grid grid-cols-2 gap-2 text-[11px] text-zinc-400 font-mono">
-                <div className="bg-[#111113] border border-white/5 p-2 rounded-lg text-left">
-                  <span className="block text-[9px] uppercase text-zinc-500">Serviços</span>
-                  <strong className="text-white text-xs">
-                    {services.filter(s => s.responsavel === "Beatriz Lima").length} ativos
-                  </strong>
-                </div>
-                <div className="bg-[#111113] border border-white/5 p-2 rounded-lg text-left">
-                  <span className="block text-[9px] uppercase text-zinc-500">Tarefas</span>
-                  <strong className="text-white text-xs">
-                    {tasks.filter(t => t.responsavel === "Beatriz Lima" && t.status !== "Concluida").length} pnd
-                  </strong>
-                </div>
-              </div>
-            </div>
+          <div>
+            <h3 className="font-bold text-sm text-white">Registrar Log de Atividade Manual</h3>
+            <p className="text-zinc-400 text-xs">Insira um novo registro de auditoria diretamente nas atividades do escritório contábil.</p>
           </div>
         </div>
+
+        <form onSubmit={handleSubmitLog} className="grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
+          <div className="space-y-1.5">
+            <label className="block text-zinc-400 text-[10px] font-semibold uppercase tracking-wider font-mono">Colaborador / Operador</label>
+            <select
+              className="w-full bg-[#0c0c0e] border border-white/5 rounded-lg px-3 py-2 text-xs text-zinc-200 focus:outline-none focus:border-blue-500 font-mono h-[38px]"
+              value={logUsuario}
+              onChange={(e) => setLogUsuario(e.target.value)}
+            >
+              {users.map((u) => (
+                <option key={u.id} value={u.name}>
+                  {u.name} ({u.role === 'admin' ? 'Administrador' : 'Colaborador'})
+                </option>
+              ))}
+              {users.length === 0 && (
+                <option value="Thayane Carvalho">Thayane Carvalho</option>
+              )}
+            </select>
+          </div>
+
+          <div className="space-y-1.5 md:col-span-2">
+            <label className="block text-zinc-400 text-[10px] font-semibold uppercase tracking-wider font-mono">Ação Realizada / Evento</label>
+            <input
+              type="text"
+              required
+              placeholder="Ex: Conciliação Bancária Trimestral efetuada para o cliente XPTO"
+              className="w-full bg-[#0c0c0e] border border-white/5 rounded-lg px-3 py-2 text-xs text-zinc-200 focus:outline-none focus:border-blue-500 placeholder-zinc-500 font-mono h-[38px]"
+              value={logAcao}
+              onChange={(e) => setLogAcao(e.target.value)}
+            />
+          </div>
+
+          <div className="space-y-1.5 md:col-span-3">
+            <label className="block text-zinc-400 text-[10px] font-semibold uppercase tracking-wider font-mono">Detalhes Operacionais / Observações</label>
+            <textarea
+              required
+              rows={2}
+              placeholder="Descreva minuciosamente as tarefas realizadas, conferência de impostos ou pendências solucionadas..."
+              className="w-full bg-[#0c0c0e] border border-white/5 rounded-lg px-3 py-2 text-xs text-zinc-200 focus:outline-none focus:border-blue-500 placeholder-zinc-600 font-mono resize-none"
+              value={logDetalhes}
+              onChange={(e) => setLogDetalhes(e.target.value)}
+            />
+          </div>
+
+          <div className="md:col-span-3 flex items-center justify-between pt-2">
+            <div>
+              {logSuccess && (
+                <span className="text-xs text-emerald-400 font-bold flex items-center gap-1.5 animate-in fade-in duration-200">
+                  <ShieldCheck className="w-4 h-4 text-emerald-400" /> Log registrado com sucesso na base de dados!
+                </span>
+              )}
+            </div>
+            <button
+              type="submit"
+              disabled={savingLog}
+              className="bg-blue-600 hover:bg-blue-500 disabled:bg-blue-800 text-white font-semibold text-xs py-2 px-5 rounded-lg flex items-center justify-center gap-2 cursor-pointer transition-colors shadow-md shadow-blue-500/10 self-end"
+            >
+              {savingLog ? (
+                <>
+                  <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                  Salvando...
+                </>
+              ) : (
+                "Registrar Evento no Histórico"
+              )}
+            </button>
+          </div>
+        </form>
       </div>
 
       {/* Supabase Integration Live Test Panel */}
@@ -393,8 +482,8 @@ export function ReportsView({
                 <div>
                   <span className={`px-2 py-0.5 rounded text-[9px] font-semibold font-mono border ${
                     hasUrl 
-                      ? "bg-emerald-500/10 text-emerald-450 border-emerald-500/20" 
-                      : "bg-amber-550/10 text-amber-500 border-amber-550/20"
+                      ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/20" 
+                      : "bg-amber-500/10 text-amber-500 border-amber-500/20"
                   }`}>
                     {hasUrl ? "Configurado ✓" : "Pendente !"}
                   </span>
@@ -423,8 +512,8 @@ export function ReportsView({
                 <div>
                   <span className={`px-2 py-0.5 rounded text-[9px] font-semibold font-mono border ${
                     hasKey 
-                      ? "bg-emerald-500/10 text-emerald-450 border-emerald-500/20" 
-                      : "bg-amber-550/10 text-amber-500 border-amber-550/20"
+                      ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/20" 
+                      : "bg-amber-500/10 text-amber-500 border-amber-500/20"
                   }`}>
                     {hasKey ? "Configurado ✓" : "Pendente !"}
                   </span>
@@ -439,8 +528,8 @@ export function ReportsView({
             
             <div className="min-h-[105px] p-4 rounded-lg bg-[#0c0c0e] border border-white/5 flex flex-col justify-between text-xs font-mono relative">
               {supabaseStatus === "idle" && (
-                <div className="text-zinc-500 text-center my-auto flex flex-col items-center justify-center gap-2">
-                  <KeyRound className="w-6 h-6 text-zinc-650" />
+                <div className="text-zinc-300 text-center my-auto flex flex-col items-center justify-center gap-2">
+                  <KeyRound className="w-6 h-6 text-blue-400" />
                   <span>Aguardando comando de teste para verificar a integridade externa do cluster...</span>
                 </div>
               )}
@@ -453,7 +542,7 @@ export function ReportsView({
               )}
 
               {supabaseStatus === "success" && (
-                <div className="p-3 bg-emerald-950/25 border border-emerald-500/15 text-emerald-300 rounded-lg flex gap-3 h-full items-start">
+                <div className="p-3 bg-[#0c0c0e] border border-white/5 text-zinc-300 rounded-lg flex gap-3 h-full items-start animate-in fade-in duration-200">
                   <ShieldCheck className="w-5 h-5 shrink-0 text-emerald-400 mt-0.5" />
                   <div className="space-y-1 select-text">
                     <span className="font-sans font-bold text-white block text-xs">Sucesso Geral!</span>
@@ -464,7 +553,7 @@ export function ReportsView({
 
               {supabaseStatus === "error" && (
                 <div className="p-3 bg-rose-950/25 border border-rose-500/15 text-rose-300 rounded-lg flex gap-3 h-full items-start">
-                  <AlertTriangle className="w-5 h-5 shrink-0 text-rose-450 mt-0.5" />
+                  <AlertTriangle className="w-5 h-5 shrink-0 text-rose-400 mt-0.5" />
                   <div className="space-y-1 select-text">
                     <span className="font-sans font-bold text-white block text-xs">Conexão Falhou</span>
                     <p className="text-[11px] leading-relaxed font-mono">{supabaseMessage}</p>

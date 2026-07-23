@@ -2,7 +2,8 @@ import React from "react";
 import { 
   Users, Briefcase, TrendingUp, AlertTriangle, 
   Clock, DollarSign, Calendar, Eye, ShieldCheck, 
-  ArrowUpRight, ArrowDownRight, FileText, Plus, X
+  ArrowUpRight, ArrowDownRight, FileText, Plus, X,
+  Trash2, UserCheck, Shield, Activity, Sparkles, Edit3
 } from "lucide-react";
 import { FiscalDeadline, AuditLog, User } from "../types";
 
@@ -24,9 +25,21 @@ interface DashboardViewProps {
   onCreateLog: (acao: string, detalhes: string, usuarioNome?: string) => Promise<void>;
   users: User[];
   onCreateUser: (newUser: { name: string; email: string; role: 'admin' | 'colaborador' }) => Promise<void>;
+  onUpdateUser?: (id: string, updatedUser: Partial<User>) => Promise<void>;
+  onDeleteUser?: (id: string) => Promise<void>;
 }
 
-export function DashboardView({ stats, loading, onNavigateToModule, onCreateLog, users, onCreateUser }: DashboardViewProps) {
+export function DashboardView({ 
+  stats, 
+  loading, 
+  onNavigateToModule, 
+  onCreateLog, 
+  users, 
+  onCreateUser,
+  onUpdateUser,
+  onDeleteUser
+}: DashboardViewProps) {
+  const [activeTab, setActiveTab] = React.useState<"time" | "logs">("time");
   const [isLogModalOpen, setIsLogModalOpen] = React.useState(false);
   const [acao, setAcao] = React.useState("");
   const [detalhes, setDetalhes] = React.useState("");
@@ -39,6 +52,15 @@ export function DashboardView({ stats, loading, onNavigateToModule, onCreateLog,
   const [userEmail, setUserEmail] = React.useState("");
   const [userRole, setUserRole] = React.useState<'admin' | 'colaborador'>("colaborador");
   const [registeringUser, setRegisteringUser] = React.useState(false);
+
+  // Edit user state
+  const [isEditUserModalOpen, setIsEditUserModalOpen] = React.useState(false);
+  const [selectedUserToEdit, setSelectedUserToEdit] = React.useState<User | null>(null);
+  const [editUserName, setEditUserName] = React.useState("");
+  const [editUserEmail, setEditUserEmail] = React.useState("");
+  const [editUserRole, setEditUserRole] = React.useState<'admin' | 'colaborador'>("colaborador");
+  const [savingEditedUser, setSavingEditedUser] = React.useState(false);
+  const [userToDelete, setUserToDelete] = React.useState<User | null>(null);
 
   React.useEffect(() => {
     if (users && users.length > 0 && !usuarioOpcao) {
@@ -89,6 +111,30 @@ export function DashboardView({ stats, loading, onNavigateToModule, onCreateLog,
       setRegisteringUser(false);
     }
   };
+
+  const handleUpdateUserSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedUserToEdit || !onUpdateUser) return;
+    if (!editUserName.trim() || !editUserEmail.trim()) {
+      alert("Por favor, preencha o nome e e-mail.");
+      return;
+    }
+
+    setSavingEditedUser(true);
+    try {
+      await onUpdateUser(selectedUserToEdit.id, {
+        name: editUserName.trim(),
+        email: editUserEmail.trim().toLowerCase(),
+        role: editUserRole,
+      });
+      setIsEditUserModalOpen(false);
+      setSelectedUserToEdit(null);
+    } catch (err: any) {
+      alert(err.message || "Erro ao atualizar dados do colaborador.");
+    } finally {
+      setSavingEditedUser(false);
+    }
+  };
   if (loading) {
     return (
       <div className="space-y-6 animate-pulse">
@@ -124,7 +170,7 @@ export function DashboardView({ stats, loading, onNavigateToModule, onCreateLog,
       </div>
 
       {/* KPI Stats Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div id="kpi-stats-grid" className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {/* KPI 1: Clientes */}
         <div 
           onClick={() => onNavigateToModule("clientes")}
@@ -170,7 +216,7 @@ export function DashboardView({ stats, loading, onNavigateToModule, onCreateLog,
               <TrendingUp className="w-4 h-4" />
             </div>
           </div>
-          <div className="text-3xl font-bold text-emerald-450">{formatBRL(stats.receitaMensal)}</div>
+          <div className="text-3xl font-bold text-emerald-400">{formatBRL(stats.receitaMensal)}</div>
           <div className="text-xs text-emerald-500 mt-2.5 flex items-center gap-1 font-mono">
             <span className="font-semibold">{stats.aReceber > 0 ? `+ ${formatBRL(stats.aReceber)} a receber` : 'Tudo em dia'}</span>
           </div>
@@ -198,7 +244,7 @@ export function DashboardView({ stats, loading, onNavigateToModule, onCreateLog,
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         
         {/* Left Column: Visual Cash Flow & Near Deadlines */}
-        <div className="lg:col-span-2 space-y-6">
+        <div className="lg:col-span-3 space-y-6">
           <div className="bg-[#111113] border border-white/5 rounded-xl p-6 shadow-md">
             <div className="flex items-center justify-between mb-4">
               <div>
@@ -206,7 +252,7 @@ export function DashboardView({ stats, loading, onNavigateToModule, onCreateLog,
                 <p className="text-xs text-zinc-400">Comparativo líquido de ingressos versus despesas operacionais.</p>
               </div>
               <div className="text-right">
-                <span className="text-[10px] font-semibold text-zinc-500 uppercase tracking-widest font-mono">Saldo Líquido</span>
+                <span className="text-[10px] font-semibold text-zinc-400 uppercase tracking-widest font-mono">Saldo Líquido</span>
                 <div className={`text-base font-bold ${balance >= 0 ? "text-emerald-400" : "text-rose-400"}`}>
                   {formatBRL(balance)}
                 </div>
@@ -215,41 +261,41 @@ export function DashboardView({ stats, loading, onNavigateToModule, onCreateLog,
 
             {/* Simulated Clean Graphic via styled custom components to ensure zero build layout breaks */}
             <div className="h-44 flex items-end justify-around border-b border-white/5 pb-1 pt-4 font-mono text-[10px]">
-              <div className="flex flex-col items-center gap-2 w-full max-w-[100px]">
-                <div className="h-28 bg-emerald-500/5 hover:bg-emerald-500/10 w-full rounded flex items-end justify-center pb-2 border-t-2 border-emerald-500 transition-all">
-                  <span className="font-bold text-emerald-400">{formatBRL(stats.receitaMensal)}</span>
+              <div className="flex flex-col items-center gap-2 w-full max-w-[100px] bg-[#f1f5f9] rounded-lg p-2.5 shadow-sm border border-slate-200">
+                <div className="h-28 bg-[#f1f5f9] hover:bg-slate-200 w-full rounded flex items-end justify-center pb-2 border-t-2 border-emerald-500 transition-all">
+                  <span className="font-bold text-[#000000]">{formatBRL(stats.receitaMensal)}</span>
                 </div>
-                <span className="text-zinc-500 uppercase font-semibold text-[9px] tracking-wider">Receitas</span>
+                <span className="text-[#040404] uppercase font-normal text-[9px] tracking-wider font-sans">Receitas</span>
               </div>
 
-              <div className="flex flex-col items-center gap-2 w-full max-w-[100px]">
-                <div className="h-16 bg-rose-500/5 hover:bg-rose-500/10 w-full rounded flex items-end justify-center pb-2 border-t-2 border-rose-500 transition-all">
-                  <span className="font-bold text-rose-400">{formatBRL(stats.despesaMensal)}</span>
+              <div className="flex flex-col items-center gap-2 w-full max-w-[100px] bg-[#f1f5f9] rounded-lg p-2.5 shadow-sm border border-slate-200">
+                <div className="h-16 bg-[#f1f5f9] hover:bg-slate-200 w-full rounded flex items-end justify-center pb-2 border-t-2 border-rose-500 transition-all">
+                  <span className="font-bold text-[#000000]">{formatBRL(stats.despesaMensal)}</span>
                 </div>
-                <span className="text-zinc-500 uppercase font-semibold text-[9px] tracking-wider">Despesas</span>
+                <span className="text-[#383636] uppercase font-normal text-[9px] tracking-wider font-sans">Despesas</span>
               </div>
 
-              <div className="flex flex-col items-center gap-2 w-full max-w-[100px]">
-                <div className="h-10 bg-[#2563eb]/5 hover:bg-[#2563eb]/10 w-full rounded flex items-end justify-center pb-2 border-t-2 border-blue-500 transition-all">
-                  <span className="font-bold text-blue-400">{formatBRL(stats.aReceber)}</span>
+              <div className="flex flex-col items-center gap-2 w-full max-w-[100px] bg-[#f1f5f9] rounded-lg p-2.5 shadow-sm border border-slate-200">
+                <div className="h-10 bg-[#f1f5f9] hover:bg-slate-200 w-full rounded flex items-end justify-center pb-2 border-t-2 border-zinc-500 transition-all">
+                  <span className="font-bold text-[#000000]">{formatBRL(stats.aReceber)}</span>
                 </div>
-                <span className="text-zinc-500 uppercase font-semibold text-[9px] tracking-wider">A Receber</span>
+                <span className="text-[#040404] uppercase font-normal text-[9px] tracking-wider font-sans">A Receber</span>
               </div>
             </div>
             
             <div className="grid grid-cols-3 gap-4 text-center mt-4 text-xs font-mono">
               <div className="p-3 bg-white/[0.01] border border-white/5 rounded-lg">
-                <span className="text-zinc-500 block text-[9px] uppercase font-semibold tracking-wider">Margem Operacional</span>
+                <span className="text-zinc-400 block text-[9px] uppercase font-semibold tracking-wider">Margem Operacional</span>
                 <span className="font-bold text-zinc-100 text-sm">
                   {stats.receitaMensal > 0 ? ((balance / stats.receitaMensal) * 100).toFixed(1) + "%" : "0%"}
                 </span>
               </div>
               <div className="p-3 bg-white/[0.01] border border-white/5 rounded-lg">
-                <span className="text-zinc-500 block text-[9px] uppercase font-semibold tracking-wider">Faturamento Futuro</span>
+                <span className="text-zinc-400 block text-[9px] uppercase font-semibold tracking-wider">Faturamento Futuro</span>
                 <span className="font-bold text-zinc-100 text-sm">{formatBRL(stats.aReceber)}</span>
               </div>
               <div className="p-3 bg-white/[0.01] border border-white/5 rounded-lg">
-                <span className="text-zinc-500 block text-[9px] uppercase font-semibold tracking-wider">Índice Inadimplência</span>
+                <span className="text-zinc-400 block text-[9px] uppercase font-semibold tracking-wider">Índice Inadimplência</span>
                 <span className="font-bold text-rose-400 text-sm">
                   {stats.receitaMensal > 0 ? ((stats.inadimplente / stats.receitaMensal) * 100).toFixed(1) + "%" : "0%"}
                 </span>
@@ -266,7 +312,7 @@ export function DashboardView({ stats, loading, onNavigateToModule, onCreateLog,
               </div>
               <button 
                 onClick={() => onNavigateToModule("prazos fiscais")}
-                className="text-xs text-blue-400 font-semibold hover:text-blue-300 transition-colors uppercase tracking-wider font-mono text-[10px]"
+                className="text-xs text-zinc-400 font-semibold hover:text-zinc-200 transition-colors uppercase tracking-wider font-mono text-[10px]"
               >
                 Gerenciar Todos →
               </button>
@@ -274,13 +320,13 @@ export function DashboardView({ stats, loading, onNavigateToModule, onCreateLog,
 
             <div className="divide-y divide-white/5">
               {stats.nearDeadlines.length === 0 ? (
-                <div className="py-8 text-center text-zinc-500 text-xs">Nenhum imposto pendente no momento.</div>
+                <div className="py-8 text-center text-zinc-400 text-xs">Nenhum imposto pendente no momento.</div>
               ) : (
                 stats.nearDeadlines.map((dl) => (
                   <div key={dl.id} className="py-3 flex items-center justify-between text-xs group hover:bg-white/[0.01] px-2 rounded-lg transition-colors">
                     <div className="space-y-1">
                       <div className="flex items-center gap-2">
-                        <span className="font-bold text-blue-400 bg-blue-500/5 border border-blue-500/10 px-1.5 py-0.5 rounded font-mono text-[10px]">{dl.titulo}</span>
+                        <span className="font-bold text-zinc-200 bg-black border border-white/10 px-1.5 py-0.5 rounded font-mono text-[10px]">{dl.titulo}</span>
                         <span className="text-zinc-200 font-medium">{dl.clienteNome}</span>
                       </div>
                       <p className="text-zinc-400 text-[11px] font-sans">{dl.descricao}</p>
@@ -289,8 +335,8 @@ export function DashboardView({ stats, loading, onNavigateToModule, onCreateLog,
                       <div className="font-bold text-zinc-100">{dl.valor ? formatBRL(dl.valor) : "R$ 0,00"}</div>
                       <span className={`inline-block text-[9px] px-2 py-0.5 rounded font-mono font-bold mt-1 ${
                         dl.status === "Vencido" 
-                          ? "bg-rose-500/10 text-rose-450 border border-rose-500/20" 
-                          : "bg-amber-500/10 text-amber-400 border border-amber-500/20"
+                          ? "bg-rose-500/10 text-rose-400 border border-rose-500/20" 
+                          : "bg-[#f1f5f9] text-[#0a0a0a] border border-slate-200"
                       }`}>
                         Até {new Date(dl.prazo).toLocaleDateString("pt-BR")}
                       </span>
@@ -301,61 +347,6 @@ export function DashboardView({ stats, loading, onNavigateToModule, onCreateLog,
             </div>
           </div>
         </div>
-
-        {/* Right Column: Active System Audit Logs */}
-        <div className="bg-[#111113] border border-white/5 rounded-xl p-6 shadow-md self-start">
-          <div className="flex items-center justify-between mb-4 gap-4">
-            <div>
-              <h3 className="text-xs font-semibold text-blue-400 uppercase tracking-wider font-mono">Eventos de Auditoria</h3>
-              <p className="text-xs text-zinc-500">Logs internos e monitoramento de segurança.</p>
-            </div>
-            <div className="flex items-center gap-2 shrink-0">
-              <button
-                onClick={() => setIsUserModalOpen(true)}
-                className="flex items-center gap-1 bg-emerald-600/15 hover:bg-emerald-600/30 border border-emerald-500/20 text-emerald-400 text-xs px-2.5 py-1.5 rounded-lg transition-colors cursor-pointer"
-                title="Cadastrar Novo Usuário"
-              >
-                <Plus className="w-3.5 h-3.5" />
-                <span>Novo Usuário</span>
-              </button>
-              <button
-                onClick={() => {
-                  if (users && users.length > 0) {
-                    setUsuarioOpcao(users[0].name);
-                  }
-                  setIsLogModalOpen(true);
-                }}
-                className="flex items-center gap-1 bg-blue-600/15 hover:bg-blue-600/30 border border-blue-500/20 text-blue-400 text-xs px-2.5 py-1.5 rounded-lg transition-colors cursor-pointer"
-                title="Registrar log manualmente"
-              >
-                <Plus className="w-3.5 h-3.5" />
-                <span>Criar Log</span>
-              </button>
-            </div>
-          </div>
-
-          <div className="space-y-3">
-            {stats.recentLogs.length === 0 ? (
-              <div className="text-center py-6 text-zinc-500 text-xs font-mono">Sem atividades registradas no sistema.</div>
-            ) : (
-              stats.recentLogs.map((log) => (
-                <div key={log.id} className="text-xs leading-normal bg-white/[0.01] border border-white/5 rounded-lg p-3">
-                  <div className="flex items-center justify-between mb-1.5 font-mono text-[9px]">
-                    <span className="font-bold text-blue-450 bg-blue-500/10 px-1.5 py-0.5 rounded border border-blue-500/15">
-                      {log.usuarioNome}
-                    </span>
-                    <span className="text-zinc-500">
-                      {new Date(log.timestamp).toLocaleTimeString("pt-BR")}
-                    </span>
-                  </div>
-                  <div className="font-semibold text-zinc-200">{log.acao}</div>
-                  <p className="text-zinc-400 text-[11px] mt-1 leading-snug">{log.detalhes}</p>
-                </div>
-              ))
-            )}
-          </div>
-        </div>
-
       </div>
 
       {/* MODAL DE CRIAÇÃO DE LOG MANUAL */}
@@ -528,6 +519,140 @@ export function DashboardView({ stats, loading, onNavigateToModule, onCreateLog,
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL DE EDIÇÃO DE COLABORADOR */}
+      {isEditUserModalOpen && (
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4 z-50 animate-in fade-in duration-200">
+          <div className="bg-[#111113] border border-white/10 rounded-2xl max-w-md w-full p-6 shadow-2xl relative text-left">
+            <button
+              type="button"
+              onClick={() => {
+                setIsEditUserModalOpen(false);
+                setSelectedUserToEdit(null);
+              }}
+              className="absolute top-4 right-4 text-zinc-400 hover:text-white transition-colors"
+            >
+              <X className="w-4 h-4" />
+            </button>
+
+            <div className="flex items-center gap-3 mb-5">
+              <div className="w-9 h-9 rounded-lg bg-blue-500/10 border border-blue-500/20 flex items-center justify-center text-blue-400">
+                <Edit3 className="w-5 h-5" />
+              </div>
+              <div>
+                <h3 className="text-xs font-bold text-white uppercase tracking-wider font-mono">Editar Cadastro</h3>
+                <p className="text-[11px] text-zinc-500 font-sans leading-tight">Altere as informações cadastrais do colaborador.</p>
+              </div>
+            </div>
+
+            <form onSubmit={handleUpdateUserSubmit} className="space-y-4">
+              <div>
+                <label className="block text-zinc-400 text-[10px] font-semibold mb-1.5 uppercase tracking-wider font-mono">Nome Completo</label>
+                <input
+                  type="text"
+                  required
+                  placeholder="Nome do colaborador"
+                  className="w-full bg-[#0c0c0e] border border-white/5 rounded-lg px-3 py-2 text-xs text-zinc-200 focus:outline-none focus:border-blue-500 placeholder-zinc-650 font-mono"
+                  value={editUserName}
+                  onChange={(e) => setEditUserName(e.target.value)}
+                />
+              </div>
+
+              <div>
+                <label className="block text-zinc-400 text-[10px] font-semibold mb-1.5 uppercase tracking-wider font-mono">E-mail Corporativo</label>
+                <input
+                  type="email"
+                  required
+                  placeholder="exemplo@contabil.com"
+                  className="w-full bg-[#0c0c0e] border border-white/5 rounded-lg px-3 py-2 text-xs text-zinc-200 focus:outline-none focus:border-blue-500 placeholder-zinc-650 font-mono"
+                  value={editUserEmail}
+                  onChange={(e) => setEditUserEmail(e.target.value)}
+                />
+              </div>
+
+              <div>
+                <label className="block text-zinc-400 text-[10px] font-semibold mb-1.5 uppercase tracking-wider font-mono">Perfil / Função</label>
+                <select
+                  className="w-full bg-[#0c0c0e] border border-white/5 rounded-lg px-3 py-2 text-xs text-zinc-200 focus:outline-none focus:border-blue-500 font-mono"
+                  value={editUserRole}
+                  onChange={(e) => setEditUserRole(e.target.value as any)}
+                >
+                  <option value="colaborador">Colaborador / Operador</option>
+                  <option value="admin">Administrador / Gestor</option>
+                </select>
+              </div>
+
+              <div className="flex justify-end gap-2.5 pt-4 border-t border-white/5">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsEditUserModalOpen(false);
+                    setSelectedUserToEdit(null);
+                  }}
+                  disabled={savingEditedUser}
+                  className="px-4 py-2 bg-white/[0.03] hover:bg-white/[0.06] disabled:opacity-50 text-zinc-300 border border-white/5 text-xs font-semibold rounded-lg cursor-pointer transition-colors"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  disabled={savingEditedUser}
+                  className="px-4 py-2 bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white text-xs font-semibold rounded-lg cursor-pointer flex items-center gap-1.5 transition-colors shadow-md shadow-blue-500/10"
+                >
+                  {savingEditedUser && (
+                    <span className="animate-spin inline-block w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full mr-1"></span>
+                  )}
+                  {savingEditedUser ? "Salvando..." : "Salvar Alterações"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Delete User Confirmation Modal */}
+      {userToDelete && (
+        <div className="fixed inset-0 bg-[#070708]/85 backdrop-blur-sm flex items-center justify-center p-4 z-50 animate-in fade-in duration-200">
+          <div className="bg-[#0e0e11] border border-white/5 rounded-xl max-w-sm w-full p-6 shadow-2xl space-y-4 text-left animate-in zoom-in-95 duration-200">
+            <div className="flex items-center gap-3 text-rose-400">
+              <div className="p-2 bg-rose-500/10 border border-rose-500/20 rounded-lg">
+                <AlertTriangle className="w-5 h-5 animate-pulse" />
+              </div>
+              <h3 className="font-bold text-sm text-white">Confirmar Exclusão</h3>
+            </div>
+            
+            <p className="text-xs text-zinc-400 leading-relaxed">
+              Tem certeza que deseja excluir o colaborador <strong className="text-zinc-200">{userToDelete.name}</strong>? Esta ação removerá o acesso dele ao painel e não pode ser desfeita.
+            </p>
+            
+            <div className="flex justify-end gap-2 pt-2">
+              <button
+                type="button"
+                onClick={() => setUserToDelete(null)}
+                className="px-3 py-1.5 border border-white/5 bg-transparent hover:bg-white/[0.02] text-zinc-400 hover:text-white rounded-lg text-xs font-semibold cursor-pointer transition-colors"
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                onClick={async () => {
+                  if (onDeleteUser) {
+                    try {
+                      await onDeleteUser(userToDelete.id);
+                    } catch (err: any) {
+                      alert(err.message || "Erro ao excluir colaborador");
+                    }
+                  }
+                  setUserToDelete(null);
+                }}
+                className="px-4 py-1.5 bg-rose-600 hover:bg-rose-500 text-white rounded-lg text-xs font-semibold cursor-pointer transition-colors shadow-md shadow-rose-500/15"
+              >
+                Confirmar Exclusão
+              </button>
+            </div>
           </div>
         </div>
       )}

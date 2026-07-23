@@ -28,10 +28,13 @@ export function ClientsView({
   // Form Modal State
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingClient, setEditingClient] = useState<Client | null>(null);
+  const [clientToDeleteId, setClientToDeleteId] = useState<string | null>(null);
   
   // New Client Form inputs
   const [name, setName] = useState("");
   const [cpfCnpj, setCpfCnpj] = useState("");
+  const [cpf, setCpf] = useState("");
+  const [cnpj, setCnpj] = useState("");
   const [telefone, setTelefone] = useState("");
   const [whatsapp, setWhatsapp] = useState("");
   const [email, setEmail] = useState("");
@@ -52,6 +55,8 @@ export function ClientsView({
     const matchesSearch = 
       c.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
       c.cpfCnpj.includes(searchQuery) || 
+      (c.cpf && c.cpf.includes(searchQuery)) ||
+      (c.cnpj && c.cnpj.includes(searchQuery)) ||
       c.email.toLowerCase().includes(searchQuery.toLowerCase());
     
     const matchesTag = !selectedTag || (c.tags && c.tags.includes(selectedTag));
@@ -64,6 +69,8 @@ export function ClientsView({
     setEditingClient(null);
     setName("");
     setCpfCnpj("");
+    setCpf("");
+    setCnpj("");
     setTelefone("");
     setWhatsapp("");
     setEmail("");
@@ -78,6 +85,22 @@ export function ClientsView({
     setEditingClient(client);
     setName(client.name);
     setCpfCnpj(client.cpfCnpj);
+    
+    if (client.cpf !== undefined || client.cnpj !== undefined) {
+      setCpf(client.cpf || "");
+      setCnpj(client.cnpj || "");
+    } else {
+      const val = client.cpfCnpj || "";
+      const clean = val.replace(/\D/g, "");
+      if (clean.length > 11) {
+        setCnpj(val);
+        setCpf("");
+      } else {
+        setCpf(val);
+        setCnpj("");
+      }
+    }
+
     setTelefone(client.telefone);
     setWhatsapp(client.whatsapp);
     setEmail(client.email);
@@ -90,7 +113,13 @@ export function ClientsView({
 
   const handleSaveClient = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!name.trim() || !cpfCnpj.trim()) return;
+    if (!name.trim()) return;
+
+    const finalCpfCnpj = cnpj.trim() || cpf.trim();
+    if (!finalCpfCnpj.trim()) {
+      alert("Por favor, informe o CPF ou o CNPJ do cliente.");
+      return;
+    }
 
     const parsedTags = tagsInput
       .split(",")
@@ -99,7 +128,9 @@ export function ClientsView({
 
     const clientPayload = {
       name,
-      cpfCnpj,
+      cpfCnpj: finalCpfCnpj,
+      cpf: cpf.trim(),
+      cnpj: cnpj.trim(),
       telefone,
       whatsapp,
       email,
@@ -237,7 +268,17 @@ export function ClientsView({
                         {client.status === "ativo" ? "Ativo" : "Inativo"}
                       </span>
                     </h3>
-                    <p className="text-zinc-500 text-xs font-mono">CPF / CNPJ: {client.cpfCnpj}</p>
+                    {client.cnpj && client.cpf ? (
+                      <p className="text-zinc-500 text-xs font-mono">
+                        CNPJ: <span className="text-zinc-300">{client.cnpj}</span> <span className="text-zinc-600">|</span> CPF: <span className="text-zinc-300">{client.cpf}</span>
+                      </p>
+                    ) : client.cnpj ? (
+                      <p className="text-zinc-500 text-xs font-mono">CNPJ: <span className="text-zinc-300">{client.cnpj}</span></p>
+                    ) : client.cpf ? (
+                      <p className="text-zinc-500 text-xs font-mono">CPF: <span className="text-zinc-300">{client.cpf}</span></p>
+                    ) : (
+                      <p className="text-zinc-500 text-xs font-mono">CPF / CNPJ: <span className="text-zinc-300">{client.cpfCnpj}</span></p>
+                    )}
                   </div>
                 </div>
 
@@ -253,7 +294,7 @@ export function ClientsView({
                 )}
 
                 {/* Quick Info contacts */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 pt-2 text-xs text-zinc-350">
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 pt-2 text-xs text-zinc-300">
                   <div className="flex items-center gap-2">
                     <Phone className="w-3.5 h-3.5 text-zinc-500" />
                     <span>{client.whatsapp || client.telefone || "Sem fone"}</span>
@@ -286,11 +327,32 @@ export function ClientsView({
                     <Edit2 className="w-3.5 h-3.5" />
                   </button>
                   <button
-                    onClick={() => onDeleteClient(client.id)}
-                    className="p-1.5 border border-rose-500/10 text-rose-450 hover:bg-rose-500/10 rounded-lg transition-colors cursor-pointer"
-                    title="Excluir"
+                    onClick={() => {
+                      if (clientToDeleteId === client.id) {
+                        onDeleteClient(client.id);
+                        setClientToDeleteId(null);
+                      } else {
+                        setClientToDeleteId(client.id);
+                        setTimeout(() => {
+                          setClientToDeleteId(prev => prev === client.id ? null : prev);
+                        }, 4000);
+                      }
+                    }}
+                    className={`p-1.5 border rounded-lg transition-all cursor-pointer flex items-center gap-1 text-xs ${
+                      clientToDeleteId === client.id
+                        ? "bg-rose-500/20 border-rose-500/30 text-rose-400 font-bold"
+                        : "border-rose-500/10 text-rose-400 hover:bg-rose-500/10"
+                    }`}
+                    title={clientToDeleteId === client.id ? "Clique novamente para confirmar a exclusão" : "Excluir"}
                   >
-                    <Trash2 className="w-3.5 h-3.5" />
+                    {clientToDeleteId === client.id ? (
+                      <>
+                        <AlertCircle className="w-3.5 h-3.5 text-rose-400" />
+                        <span>Confirmar?</span>
+                      </>
+                    ) : (
+                      <Trash2 className="w-3.5 h-3.5" />
+                    )}
                   </button>
                 </div>
 
@@ -338,14 +400,24 @@ export function ClientsView({
                 </div>
 
                 <div>
-                  <label className="block text-zinc-400 text-xs font-semibold mb-1.5 uppercase tracking-wider font-mono">CPF ou CNPJ</label>
+                  <label className="block text-zinc-400 text-xs font-semibold mb-1.5 uppercase tracking-wider font-mono">CPF</label>
                   <input
                     type="text"
-                    required
-                    className="w-full bg-[#0c0c0e] border border-white/5 rounded-lg px-3 py-2 text-xs text-zinc-200 focus:outline-none focus:border-blue-500"
+                    className="w-full bg-[#0c0c0e] border border-white/5 rounded-lg px-3 py-2 text-xs text-zinc-200 focus:outline-none focus:border-blue-500 font-mono"
+                    placeholder="000.000.000-00"
+                    value={cpf}
+                    onChange={(e) => setCpf(e.target.value)}
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-zinc-400 text-xs font-semibold mb-1.5 uppercase tracking-wider font-mono">CNPJ</label>
+                  <input
+                    type="text"
+                    className="w-full bg-[#0c0c0e] border border-white/5 rounded-lg px-3 py-2 text-xs text-zinc-200 focus:outline-none focus:border-blue-500 font-mono"
                     placeholder="00.000.000/0001-00"
-                    value={cpfCnpj}
-                    onChange={(e) => setCpfCnpj(e.target.value)}
+                    value={cnpj}
+                    onChange={(e) => setCnpj(e.target.value)}
                   />
                 </div>
 
@@ -383,7 +455,7 @@ export function ClientsView({
                   />
                 </div>
 
-                <div className="col-span-2">
+                <div>
                   <label className="block text-zinc-400 text-xs font-semibold mb-1.5 uppercase tracking-wider font-mono">E-mail para envio de guias</label>
                   <input
                     type="email"
@@ -455,7 +527,7 @@ export function ClientsView({
           <div className="bg-[#111113] border-l border-white/5 w-full max-w-md h-full shadow-2xl overflow-y-auto flex flex-col animate-in slide-in-from-right duration-200">
             <div className="flex items-center justify-between px-6 py-5 border-b shrink-0 border-white/5 bg-[#0c0c0e] text-white">
               <div className="text-left">
-                <span className="text-[9px] text-zinc-550 font-mono tracking-wider uppercase block font-semibold">Logs Cronológicos</span>
+                <span className="text-[9px] text-zinc-400 font-mono tracking-wider uppercase block font-semibold">Logs Cronológicos</span>
                 <h3 className="font-bold text-sm leading-tight max-w-[285px]">{activeHistoryClient.name}</h3>
               </div>
               <button
@@ -474,7 +546,7 @@ export function ClientsView({
                   type="text"
                   required
                   placeholder="Ex: Entregou os comprovantes p/ imposto ou mudou regime..."
-                  className="flex-1 bg-[#0c0c0e] border border-white/5 rounded-lg px-3 py-2 text-xs text-zinc-250 focus:outline-none focus:border-blue-500"
+                  className="flex-1 bg-[#0c0c0e] border border-white/5 rounded-lg px-3 py-2 text-xs text-zinc-200 focus:outline-none focus:border-blue-500"
                   value={newHistoryDesc}
                   onChange={(e) => setNewHistoryDesc(e.target.value)}
                 />

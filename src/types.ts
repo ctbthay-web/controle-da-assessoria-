@@ -10,6 +10,8 @@ export interface Client {
   id: string;
   name: string;
   cpfCnpj: string;
+  cpf?: string;
+  cnpj?: string;
   telefone: string;
   whatsapp: string;
   email: string;

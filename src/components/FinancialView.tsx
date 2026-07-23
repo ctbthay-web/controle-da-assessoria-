@@ -131,6 +131,7 @@ export function FinancialView({
   const [searchQuery, setSearchQuery] = useState("");
   const [typeFilter, setTypeFilter] = useState<string | null>(null);
   const [statusFilter, setStatusFilter] = useState<string | null>(null);
+  const [entryToDeleteId, setEntryToDeleteId] = useState<string | null>(null);
 
   // Form Modal State
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -302,24 +303,24 @@ export function FinancialView({
           <input
             type="text"
             placeholder="Buscar por descrição ou categoria..."
-            className="w-full bg-[#0c0c0e] border border-white/5 rounded-lg pl-9.5 pr-4 py-2 text-xs text-zinc-200 placeholder-zinc-550 focus:outline-none focus:border-blue-500"
+            className="w-full bg-[#0c0c0e] border border-white/5 rounded-lg pl-9.5 pr-4 py-2 text-xs text-zinc-200 placeholder-zinc-500 focus:outline-none focus:border-blue-500"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
           />
         </div>
 
         <select
-          className="bg-[#0c0c0e] border border-white/5 rounded-lg px-3 py-2 text-xs text-zinc-350 outline-none focus:border-blue-500"
+          className="bg-[#0c0c0e] border border-white/5 rounded-lg px-3 py-2 text-xs text-zinc-300 outline-none focus:border-blue-500"
           value={typeFilter || ""}
           onChange={(e) => setTypeFilter(e.target.value || null)}
         >
           <option value="">Fluxo: Todos</option>
-          <option value="Receita">Receiras (Entradas)</option>
+          <option value="Receita">Receitas (Entradas)</option>
           <option value="Despesa">Despesas (Saídas)</option>
         </select>
 
         <select
-          className="bg-[#0c0c0e] border border-white/5 rounded-lg px-3 py-2 text-xs text-zinc-350 outline-none focus:border-blue-500"
+          className="bg-[#0c0c0e] border border-white/5 rounded-lg px-3 py-2 text-xs text-zinc-300 outline-none focus:border-blue-500"
           value={statusFilter || ""}
           onChange={(e) => setStatusFilter(e.target.value || null)}
         >
@@ -396,11 +397,32 @@ export function FinancialView({
                     </td>
                     <td className="px-6 py-3.5 text-center">
                       <button
-                        onClick={() => onDeleteEntry(entry.id)}
-                        className="p-1 hover:bg-rose-500/10 text-rose-455 hover:text-rose-400 rounded transition-colors cursor-pointer"
-                        title="Remover movimentação"
+                        onClick={() => {
+                          if (entryToDeleteId === entry.id) {
+                            onDeleteEntry(entry.id);
+                            setEntryToDeleteId(null);
+                          } else {
+                            setEntryToDeleteId(entry.id);
+                            setTimeout(() => {
+                              setEntryToDeleteId(prev => prev === entry.id ? null : prev);
+                            }, 4000);
+                          }
+                        }}
+                        className={`p-1 rounded cursor-pointer transition-all flex items-center justify-center gap-1 mx-auto ${
+                          entryToDeleteId === entry.id
+                            ? "bg-rose-500/20 text-rose-400 border border-rose-500/30 font-bold px-2 py-0.5"
+                            : "hover:bg-rose-500/10 text-rose-400"
+                        }`}
+                        title={entryToDeleteId === entry.id ? "Clique novamente para confirmar a exclusão" : "Remover movimentação"}
                       >
-                        <Trash2 className="w-3.5 h-3.5" />
+                        {entryToDeleteId === entry.id ? (
+                          <>
+                            <AlertCircle className="w-3 h-3 text-rose-400 animate-bounce" />
+                            <span className="text-[10px]">Confirmar?</span>
+                          </>
+                        ) : (
+                          <Trash2 className="w-3.5 h-3.5" />
+                        )}
                       </button>
                     </td>
                   </tr>
@@ -467,7 +489,7 @@ export function FinancialView({
                   <input
                     type="text"
                     required
-                    className="w-full bg-[#0c0c0e] border border-white/5 rounded-lg px-3 py-2 text-xs text-zinc-200 placeholder-zinc-550 focus:outline-none focus:border-blue-500"
+                    className="w-full bg-[#0c0c0e] border border-white/5 rounded-lg px-3 py-2 text-xs text-zinc-200 placeholder-zinc-500 focus:outline-none focus:border-blue-500"
                     placeholder="Ex: Nota Fiscal 1045 ou Mensalidade Maio..."
                     value={descricao}
                     onChange={(e) => setDescricao(e.target.value)}
@@ -478,7 +500,7 @@ export function FinancialView({
                   <div className="col-span-2">
                     <label className="block text-zinc-400 text-xs font-semibold mb-1.5 uppercase tracking-wider font-mono">Vincular Cliente (Opcional)</label>
                     <select
-                      className="w-full bg-[#0c0c0e] border border-white/5 rounded-lg px-3 py-2 text-xs text-zinc-350 outline-none"
+                      className="w-full bg-[#0c0c0e] border border-white/5 rounded-lg px-3 py-2 text-xs text-zinc-300 outline-none"
                       value={clienteId}
                       onChange={(e) => setClienteId(e.target.value)}
                     >

@@ -2,11 +2,12 @@ import React, { useState, useEffect } from "react";
 import { 
   Users, Briefcase, Calendar, DollarSign, KeyRound, Clock, 
   MessageSquare, History, FileText, TrendingUp, ShieldCheck, 
-  Settings, LogOut, Moon, Sun, ShieldAlert, Sparkles, Building2
+  Settings, LogOut, Moon, Sun, ShieldAlert, Sparkles, Building2,
+  Database
 } from "lucide-react";
 import { 
   Client, Service, FinancialEntry, ScheduleEvent, 
-  PasswordVault, FiscalDeadline, Task, DocumentInfo, User 
+  PasswordVault, FiscalDeadline, Task, DocumentInfo, User, AuditLog 
 } from "./types";
 import { api } from "./utils/api";
 
@@ -22,12 +23,15 @@ import { DeadlinesView } from "./components/DeadlinesView";
 import { TasksView } from "./components/TasksView";
 import { DocumentsView } from "./components/DocumentsView";
 import { ReportsView } from "./components/ReportsView";
+import { LogsView } from "./components/LogsView";
+import { SupabaseSyncModal } from "./components/SupabaseSyncModal";
 
 export default function App() {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [loadingUser, setLoadingUser] = useState(true);
   const [currentModule, setCurrentModule] = useState<string>("dashboard");
   const [darkTheme, setDarkTheme] = useState(true);
+  const [isSupabaseModalOpen, setIsSupabaseModalOpen] = useState(false);
 
   // Big synchronized state of the whole App
   const [clients, setClients] = useState<Client[]>([]);
@@ -39,6 +43,7 @@ export default function App() {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [documents, setDocuments] = useState<DocumentInfo[]>([]);
   const [users, setUsers] = useState<User[]>([]);
+  const [auditLogs, setAuditLogs] = useState<AuditLog[]>([]);
 
   // Statistics for dashboard
   const [dashboardStats, setDashboardStats] = useState<any>({
@@ -81,7 +86,7 @@ export default function App() {
       const [
         clientsList, servicesList, financialList, 
         schedulesList, passwordsList, deadlinesList, 
-        tasksList, docsList, statsData, usersList
+        tasksList, docsList, statsData, usersList, logsList
       ] = await Promise.all([
         api.clients.list(),
         api.services.list(),
@@ -92,7 +97,8 @@ export default function App() {
         api.tasks.list(),
         api.documents.list(),
         api.dashboard.getStats(),
-        api.users.list()
+        api.users.list(),
+        api.auditLogs.list()
       ]);
 
       setClients(clientsList);
@@ -105,6 +111,7 @@ export default function App() {
       setDocuments(docsList);
       setDashboardStats(statsData);
       setUsers(usersList);
+      setAuditLogs(logsList);
     } catch (err) {
       console.error("Erro ao sincronizar tabelas operacionais:", err);
     } finally {
@@ -149,6 +156,8 @@ export default function App() {
             onCreateLog={(acao, detalhes, usuarioNome) => executeAndSync(() => api.dashboard.createLog(acao, detalhes, usuarioNome))}
             users={users}
             onCreateUser={(newUser) => executeAndSync(() => api.users.create(newUser))}
+            onUpdateUser={(id, updatedUser) => executeAndSync(() => api.users.update(id, updatedUser))}
+            onDeleteUser={(id) => executeAndSync(() => api.users.delete(id))}
           />
         );
       case "clientes":
@@ -169,6 +178,7 @@ export default function App() {
             onCreateService={(s) => executeAndSync(() => api.services.create(s))}
             onUpdateService={(id, s) => executeAndSync(() => api.services.update(id, s))}
             onDeleteService={(id) => executeAndSync(() => api.services.delete(id))}
+            users={users}
           />
         );
       case "financeiro":
@@ -216,6 +226,7 @@ export default function App() {
             onUpdateTask={(id, t) => executeAndSync(() => api.tasks.update(id, t))}
             onAddComment={(id, text) => executeAndSync(() => api.tasks.addComment(id, text))}
             onDeleteTask={(id) => executeAndSync(() => api.tasks.delete(id))}
+            users={users}
           />
         );
       case "documentos ged":
@@ -235,6 +246,19 @@ export default function App() {
             financial={financial}
             tasks={tasks}
             deadlines={deadlines}
+            users={users}
+            onCreateLog={(acao, detalhes, usuarioNome) => executeAndSync(() => api.dashboard.createLog(acao, detalhes, usuarioNome))}
+          />
+        );
+      case "logs":
+        return (
+          <LogsView
+            logs={auditLogs}
+            users={users}
+            onCreateLog={(acao, detalhes, usuarioNome) => executeAndSync(() => api.auditLogs.create(acao, detalhes, usuarioNome))}
+            onDeleteLog={(id) => executeAndSync(() => api.auditLogs.delete(id))}
+            onClearLogs={() => executeAndSync(() => api.auditLogs.clear())}
+            onRefresh={() => loadAllApplicationData()}
           />
         );
       default:
@@ -287,6 +311,7 @@ export default function App() {
               { id: "tarefas", label: "Tarefas Internas", icon: MessageSquare },
               { id: "documentos ged", label: "GED de Documentos", icon: FileText },
               { id: "relatórios", label: "Relatórios & Perf", icon: Settings },
+              { id: "logs", label: "Logs do Sistema", icon: History },
             ].map((menu) => {
               const Icon = menu.icon;
               const isActive = currentModule === menu.id;
@@ -314,12 +339,21 @@ export default function App() {
           <div className="text-left bg-white/[0.02]/40 p-3 rounded-lg border border-white/5">
             <span className="text-[9px] text-zinc-500 font-mono block uppercase font-semibold">Usuário logado</span>
             <span className="font-bold text-zinc-200 text-xs block leading-tight mt-0.5">{currentUser.name}</span>
-            <span className="text-[9px] font-semibold text-blue-400 capitalize bg-blue-500/10 px-1.5 py-0.5 rounded font-mono mt-1 inline-block border border-blue-500/15">
-              {currentUser.role}
+            <span className="text-[9px] font-bold text-blue-400 bg-blue-500/10 px-1.5 py-0.5 rounded font-mono mt-1 inline-block border border-blue-500/15">
+              {currentUser.role === "admin" ? "Gestor" : "Colaborador"}
             </span>
           </div>
 
-          <div className="flex gap-2">
+          <div className="flex flex-col gap-2">
+            <button
+              onClick={() => setIsSupabaseModalOpen(true)}
+              className="w-full bg-emerald-950/20 hover:bg-emerald-950/30 border border-emerald-500/20 text-emerald-400 hover:text-emerald-300 rounded-lg py-2 px-3 flex items-center justify-center cursor-pointer transition-colors gap-2 font-medium text-xs shadow-sm"
+              title="Configurar e Sincronizar Supabase"
+            >
+              <Database className="w-3.5 h-3.5 text-emerald-400" />
+              Sincronizar Supabase
+            </button>
+
             <button
               onClick={handleLogout}
               className="w-full bg-rose-950/20 hover:bg-rose-950/30 border border-rose-500/10 text-rose-400 hover:text-rose-300 rounded-lg py-2 px-3 flex items-center justify-center cursor-pointer transition-colors gap-2 font-medium text-xs"
@@ -335,8 +369,13 @@ export default function App() {
       {/* 2. MAIN SCROLL CONTAINER SECTION */}
       <main className="flex-1 flex flex-col min-h-screen">
         
-        {/* Upper Top Navbar */}
-        <header className="bg-[#09090b] border-b border-white/5 shrink-0 px-8 py-4 flex items-center justify-between">
+        {/* View Content Frame */}
+        <div className="flex-1 p-8 overflow-y-auto max-w-7xl w-full mx-auto">
+          {renderCurrentModuleView()}
+        </div>
+
+        {/* Footer Navbar at bottom */}
+        <footer className="bg-[#09090b] border-t border-white/5 shrink-0 px-8 py-4 flex items-center justify-between">
           <div className="flex items-center gap-2">
             <span className="text-[10px] font-mono uppercase font-bold tracking-widest text-zinc-500">Módulo Ativo</span>
             <span className="text-sm text-zinc-700">/</span>
@@ -346,6 +385,13 @@ export default function App() {
           </div>
 
           <div className="flex items-center gap-4 text-xs">
+            <button
+              onClick={() => setIsSupabaseModalOpen(true)}
+              className="flex items-center gap-1.5 text-emerald-400 bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/20 px-2.5 py-1 rounded-md text-[11px] font-mono transition-colors cursor-pointer"
+            >
+              <Database className="w-3 h-3 text-emerald-400" />
+              Supabase status
+            </button>
             {loadingData && (
               <span className="flex items-center gap-1.5 text-blue-400 font-mono text-[10px] animate-pulse">
                 <span className="w-1.5 h-1.5 rounded-full bg-blue-500"></span>
@@ -354,13 +400,15 @@ export default function App() {
             )}
             <span className="text-zinc-500 font-mono text-xs">{new Date().toLocaleDateString("pt-BR", { day: 'numeric', month: 'long', year: 'numeric' })}</span>
           </div>
-        </header>
-
-        {/* View Content Frame */}
-        <div className="flex-1 p-8 overflow-y-auto max-w-7xl w-full mx-auto">
-          {renderCurrentModuleView()}
-        </div>
+        </footer>
       </main>
+
+      {/* Supabase Sync Modal */}
+      <SupabaseSyncModal
+        isOpen={isSupabaseModalOpen}
+        onClose={() => setIsSupabaseModalOpen(false)}
+        onSyncComplete={loadAllApplicationData}
+      />
     </div>
   );
 }

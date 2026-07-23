@@ -3,7 +3,7 @@ import {
   Plus, Search, CheckCircle, Clock, AlertCircle, MessageSquare, 
   User, CheckSquare, Square, X, Trash2, Calendar, Send, Save
 } from "lucide-react";
-import { Task } from "../types";
+import { Task, User as UserType } from "../types";
 
 interface TasksViewProps {
   tasks: Task[];
@@ -11,6 +11,7 @@ interface TasksViewProps {
   onUpdateTask: (id: string, task: Partial<Task>) => Promise<void>;
   onAddComment: (id: string, texto: string) => Promise<void>;
   onDeleteTask: (id: string) => Promise<void>;
+  users?: UserType[];
 }
 
 export function TasksView({
@@ -18,7 +19,8 @@ export function TasksView({
   onCreateTask,
   onUpdateTask,
   onAddComment,
-  onDeleteTask
+  onDeleteTask,
+  users = []
 }: TasksViewProps) {
   const [searchQuery, setSearchQuery] = useState("");
   const [priorityFilter, setPriorityFilter] = useState<string | null>(null);
@@ -27,7 +29,7 @@ export function TasksView({
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [titulo, setTitulo] = useState("");
   const [prioridade, setPrioridade] = useState<Task["prioridade"]>("Media");
-  const [responsavel, setResponsavel] = useState("Carlos Souza");
+  const [responsavel, setResponsavel] = useState(() => users[0]?.name || "Thayane Carvalho");
   const [prazo, setPrazo] = useState("");
   const [checklist, setChecklist] = useState<Array<{ id: string; item: string; concluido: boolean }>>([]);
   const [newCheckItem, setNewCheckItem] = useState("");
@@ -39,7 +41,7 @@ export function TasksView({
   const handleOpenCreate = () => {
     setTitulo("");
     setPrioridade("Media");
-    setResponsavel("Carlos Souza");
+    setResponsavel(users[0]?.name || "Thayane Carvalho");
     setPrazo(new Date().toISOString().split("T")[0]);
     setChecklist([]);
     setNewCheckItem("");
@@ -164,14 +166,14 @@ export function TasksView({
           <input
             type="text"
             placeholder="Buscar por tarefa, responsável..."
-            className="w-full bg-[#0c0c0e] border border-white/5 rounded-lg pl-9.5 pr-4 py-2 text-xs text-zinc-200 placeholder-zinc-550 focus:outline-none focus:border-blue-500"
+            className="w-full bg-[#0c0c0e] border border-white/5 rounded-lg pl-9.5 pr-4 py-2 text-xs text-zinc-200 placeholder-zinc-500 focus:outline-none focus:border-blue-500"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
           />
         </div>
 
         <select
-          className="bg-[#0c0c0e] border border-white/5 rounded-lg px-3 py-2 text-xs text-zinc-350 outline-none focus:border-blue-500"
+          className="bg-[#0c0c0e] border border-white/5 rounded-lg px-3 py-2 text-xs text-zinc-300 outline-none focus:border-blue-500"
           value={priorityFilter || ""}
           onChange={(e) => setPriorityFilter(e.target.value || null)}
         >
@@ -231,12 +233,12 @@ export function TasksView({
                           <div 
                             key={ci.id}
                             onClick={() => handleToggleCheckDb(task, ci.id)}
-                            className="flex items-center gap-1.5 text-xs text-zinc-450 cursor-pointer hover:text-white"
+                            className="flex items-center gap-1.5 text-xs text-zinc-400 cursor-pointer hover:text-white"
                           >
                             {ci.concluido ? (
-                              <CheckSquare className="w-3.5 h-3.5 text-blue-550 shrink-0" />
+                              <CheckSquare className="w-3.5 h-3.5 text-blue-400 shrink-0" />
                             ) : (
-                              <Square className="w-3.5 h-3.5 text-zinc-650 shrink-0" />
+                              <Square className="w-3.5 h-3.5 text-zinc-600 shrink-0" />
                             )}
                             <span className={ci.concluido ? "line-through text-zinc-500" : "text-zinc-300"}>{ci.item}</span>
                           </div>
@@ -314,7 +316,7 @@ export function TasksView({
                 <input
                   type="text"
                   required
-                  className="w-full bg-[#0c0c0e] border border-white/5 rounded-lg px-3 py-2 text-xs text-zinc-200 placeholder-zinc-550 focus:outline-none focus:border-blue-500"
+                  className="w-full bg-[#0c0c0e] border border-white/5 rounded-lg px-3 py-2 text-xs text-zinc-200 placeholder-zinc-500 focus:outline-none focus:border-blue-500"
                   placeholder="Ex: Assinar certidões da prefeitura"
                   value={titulo}
                   onChange={(e) => setTitulo(e.target.value)}
@@ -325,7 +327,7 @@ export function TasksView({
                 <div>
                   <label className="block text-zinc-455 text-[10px] font-semibold mb-1 uppercase tracking-wider font-mono">Prioridade Especial</label>
                   <select
-                    className="w-full bg-[#0c0c0e] border border-white/5 rounded-lg px-3 py-2 text-xs text-zinc-350 outline-none focus:border-blue-500"
+                    className="w-full bg-[#0c0c0e] border border-white/5 rounded-lg px-3 py-2 text-xs text-zinc-300 outline-none focus:border-blue-500"
                     value={prioridade}
                     onChange={(e) => setPrioridade(e.target.value as any)}
                   >
@@ -353,22 +355,28 @@ export function TasksView({
                     value={responsavel}
                     onChange={(e) => setResponsavel(e.target.value)}
                   >
-                    <option value="Carlos Souza">Carlos Souza</option>
-                    <option value="Thayane Carvalho">Thayane Carvalho</option>
-                    <option value="Beatriz Lima">Beatriz Lima</option>
+                    {users.length > 0 ? (
+                      users.map((u) => (
+                        <option key={u.id} value={u.name}>
+                          {u.name}
+                        </option>
+                      ))
+                    ) : (
+                      <option value="Thayane Carvalho">Thayane Carvalho</option>
+                    )}
                   </select>
                 </div>
               </div>
 
               {/* Sub Checkitems layout inside form */}
               <div className="p-3 bg-[#0c0c0e]/30 border border-white/5 rounded-lg space-y-3 shrink-1">
-                <span className="text-[10px] text-zinc-450 uppercase font-mono font-bold block">Definir Sub-ações (Opcional)</span>
+                <span className="text-[10px] text-zinc-400 uppercase font-mono font-bold block">Definir Sub-ações (Opcional)</span>
                 
                 <div className="flex gap-2">
                   <input
                     type="text"
                     placeholder="Ex: Coleta assinatura"
-                    className="flex-1 bg-[#0c0c0e] border border-white/5 rounded px-3 py-1.5 text-xs text-zinc-200 placeholder-zinc-550 focus:outline-none focus:border-blue-500"
+                    className="flex-1 bg-[#0c0c0e] border border-white/5 rounded px-3 py-1.5 text-xs text-zinc-200 placeholder-zinc-500 focus:outline-none focus:border-blue-500"
                     value={newCheckItem}
                     onChange={(e) => setNewCheckItem(e.target.value)}
                     onKeyDown={(e) => {
@@ -407,7 +415,7 @@ export function TasksView({
                 <button
                   type="button"
                   onClick={() => setIsModalOpen(false)}
-                  className="px-4 py-2 bg-white/[0.03] hover:bg-white/[0.06] text-zinc-350 border border-white/5 text-xs font-semibold rounded-lg cursor-pointer"
+                  className="px-4 py-2 bg-white/[0.03] hover:bg-white/[0.06] text-zinc-300 border border-white/5 text-xs font-semibold rounded-lg cursor-pointer"
                 >
                   Cancelar
                 </button>
@@ -443,7 +451,7 @@ export function TasksView({
 
             {/* Comment adding Thread */}
             <form onSubmit={handleSaveDocComment} className="p-4 border-b border-white/5 bg-[#0c0c0e] shrink-0">
-              <label className="block text-zinc-450 text-[10px] font-semibold mb-1 uppercase tracking-wider font-mono text-left">Mandar Comentário Interno</label>
+              <label className="block text-zinc-400 text-[10px] font-semibold mb-1 uppercase tracking-wider font-mono text-left">Mandar Comentário Interno</label>
               <div className="flex gap-2">
                 <input
                   type="text"
@@ -464,15 +472,15 @@ export function TasksView({
 
             {/* Messages box list */}
             <div className="flex-1 p-5 space-y-4">
-              <span className="text-[10px] uppercase font-bold text-zinc-500 font-mono block text-left">Histórico de Discussão</span>
+              <span className="text-[10px] uppercase font-bold text-zinc-400 font-mono block text-left">Histórico de Discussão</span>
               
               {!activeTaskComment.comentarios || activeTaskComment.comentarios.length === 0 ? (
-                <div className="text-center text-zinc-550 text-xs py-8 font-mono">Vazio. Compartilhe um alinhamento sobre a tarefa.</div>
+                <div className="text-center text-zinc-400 text-xs py-8 font-mono">Vazio. Compartilhe um alinhamento sobre a tarefa.</div>
               ) : (
                 <div className="space-y-3">
                   {activeTaskComment.comentarios.map((cmt) => (
                     <div key={cmt.id} className="bg-[#0c0c0e]/45 border border-white/5 rounded-lg p-3 text-xs text-left">
-                      <div className="flex items-center justify-between font-mono text-[9px] text-zinc-500 mb-1">
+                      <div className="flex items-center justify-between font-mono text-[9px] text-zinc-400 mb-1">
                         <span className="font-bold text-zinc-300 bg-white/[0.02] border border-white/5 px-1.5 py-0.5 rounded">{cmt.autor}</span>
                         <span>{new Date(cmt.data).toLocaleDateString("pt-BR")}</span>
                       </div>

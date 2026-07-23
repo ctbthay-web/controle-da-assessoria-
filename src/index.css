@@ -1,25 +1,232 @@
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
 @import "tailwindcss";
 
+@theme {
+  --font-sans: 'Inter', system-ui, -apple-system, sans-serif;
+}
+
 @layer base {
   body {
     font-family: 'Inter', system-ui, -apple-system, sans-serif;
-    @apply bg-[#09090b] text-[#cbd5e1] antialiased selection:bg-blue-600/30 selection:text-white;
+    @apply bg-slate-50 text-slate-800 antialiased selection:bg-blue-600/30 selection:text-white;
   }
 }
 
-/* Custom dark scrollbars for Sophisticated Dark theme */
+/* 1. GLOBAL LIGHT MODE THEMING */
+
+/* Base backgrounds */
+body, html, .bg-\[\#09090b\] {
+  background-color: #f8fafc !important; /* slate-50 */
+}
+
+/* Sidebar & secondary panels */
+.bg-\[\#0c0c0e\] {
+  background-color: #f1f5f9 !important; /* slate-100 */
+}
+
+/* Cards & primary content blocks */
+.bg-\[\#111113\], .bg-\[\#0e0e11\], .bg-\[\#141416\], .bg-\[\#161618\], .bg-zinc-900, .bg-slate-950, .bg-black {
+  background-color: #ffffff !important; /* pure white */
+}
+
+/* Subtle slate background blocks */
+.bg-\[\#070708\] {
+  background-color: #f1f5f9 !important; /* slate-100 */
+}
+
+.bg-\[\#18181b\] {
+  background-color: #f8fafc !important; /* slate-50 */
+}
+
+/* Opaque and overlay panels */
+.bg-\[\#0c0c0e\]\/30, .bg-\[\#0c0c0e\]\/40 {
+  background-color: rgba(241, 245, 249, 0.6) !important;
+}
+
+.bg-\[\#070708\]\/90 {
+  background-color: rgba(255, 255, 255, 0.95) !important;
+}
+
+.bg-\[\#070708\]\/85 {
+  background-color: rgba(15, 23, 42, 0.45) !important; /* backdrop overlay */
+}
+
+/* Subtle light overlay classes */
+.bg-white\/\[0\.02\] {
+  background-color: rgba(15, 23, 42, 0.02) !important;
+}
+
+.bg-white\/\[0\.02\]\/40 {
+  background-color: rgba(15, 23, 42, 0.03) !important;
+}
+
+.bg-white\/\[0\.04\], .hover\:bg-white\/\[0\.04\]:hover {
+  background-color: rgba(15, 23, 42, 0.04) !important;
+}
+
+/* Inputs, select fields, and textareas */
+input, select, textarea {
+  background-color: #ffffff !important;
+  color: #0f172a !important;
+  border-color: rgba(15, 23, 42, 0.12) !important;
+}
+
+input::placeholder, textarea::placeholder {
+  color: #94a3b8 !important; /* slate-400 */
+}
+
+/* Interactive elements / lists */
+li, tr, td {
+  border-color: rgba(15, 23, 42, 0.06) !important;
+}
+
+/* Borders in light mode */
+.border-white\/5 {
+  border-color: rgba(15, 23, 42, 0.08) !important;
+}
+
+.border-white\/10 {
+  border-color: rgba(15, 23, 42, 0.12) !important;
+}
+
+.border-white\/15 {
+  border-color: rgba(15, 23, 42, 0.18) !important;
+}
+
+.border-white\/20 {
+  border-color: rgba(15, 23, 42, 0.25) !important;
+}
+
+.border-zinc-800 {
+  border-color: #e2e8f0 !important;
+}
+
+/* Text Colors */
+.text-\[\#cbd5e1\], body {
+  color: #334155 !important; /* slate-700 */
+}
+
+.text-zinc-400, .text-zinc-550 {
+  color: #475569 !important; /* slate-600 */
+}
+
+.text-zinc-500 {
+  color: #64748b !important; /* slate-500 */
+}
+
+.text-zinc-300, .text-zinc-250 {
+  color: #334155 !important; /* slate-700 */
+}
+
+.text-zinc-200 {
+  color: #1e293b !important; /* slate-800 */
+}
+
+.text-zinc-100 {
+  color: #0f172a !important; /* slate-900 */
+}
+
+/* Selectively map white text to dark slate so we don't break colored buttons/badges */
+.text-white:not(
+  button, 
+  button *, 
+  [class*="bg-blue-"] *, 
+  [class*="bg-rose-"] *, 
+  [class*="bg-emerald-"] *, 
+  [class*="bg-amber-"] *, 
+  [class*="bg-indigo-"] *, 
+  [class*="bg-green-"] *, 
+  [class*="bg-red-"] *,
+  [class*="bg-blue-"], 
+  [class*="bg-rose-"], 
+  [class*="bg-emerald-"], 
+  [class*="bg-amber-"], 
+  [class*="bg-indigo-"], 
+  [class*="bg-green-"], 
+  [class*="bg-red-"],
+  .bg-blue-600, .bg-blue-600 *,
+  .bg-rose-600, .bg-rose-600 *,
+  .bg-emerald-600, .bg-emerald-600 *,
+  .bg-amber-600, .bg-amber-600 *,
+  .badge
+) {
+  color: #0f172a !important;
+}
+
+/* Muted / Subtitle labels */
+.text-zinc-500\/80 {
+  color: rgba(71, 85, 105, 0.8) !important;
+}
+
+/* Sidebar Specific Readability */
+aside {
+  background-color: #f1f5f9 !important; /* light sidebar background */
+  border-right-color: rgba(15, 23, 42, 0.08) !important;
+}
+
+aside .text-zinc-400 {
+  color: #475569 !important;
+}
+
+aside .text-white {
+  color: #0f172a !important;
+}
+
+aside h2 {
+  color: #0f172a !important;
+}
+
+/* Sidebar navigation buttons */
+aside button:not(.bg-blue-600\/15):hover {
+  background-color: rgba(15, 23, 42, 0.04) !important;
+  color: #0f172a !important;
+}
+
+aside button.bg-blue-600\/15 {
+  background-color: rgba(37, 99, 235, 0.12) !important;
+  color: #1d4ed8 !important;
+  border-color: rgba(37, 99, 235, 0.25) !important;
+}
+
+/* 2. SCALE PIXEL-BASED AND DEFAULT TEXT CLASSES BY APPROXIMATELY 25% */
+.text-\[9px\] { font-size: 11.25px !important; line-height: 14px !important; }
+.text-\[10px\] { font-size: 12.5px !important; line-height: 16px !important; }
+.text-\[10\.5px\] { font-size: 13.125px !important; line-height: 17px !important; }
+.text-\[11px\] { font-size: 13.75px !important; line-height: 18px !important; }
+
+.text-xs:not(#kpi-stats-grid *) { font-size: 0.9375rem !important; line-height: 1.35rem !important; } /* originally 0.75rem (12px) * 1.25 = 15px */
+.text-sm:not(#kpi-stats-grid *) { font-size: 1.09375rem !important; line-height: 1.6rem !important; } /* originally 0.875rem (14px) * 1.25 = 17.5px */
+.text-base:not(#kpi-stats-grid *) { font-size: 1.25rem !important; line-height: 1.8rem !important; } /* originally 1rem (16px) * 1.25 = 20px */
+.text-lg:not(#kpi-stats-grid *) { font-size: 1.40625rem !important; line-height: 2rem !important; } /* originally 1.125rem (18px) * 1.25 = 22.5px */
+.text-xl:not(#kpi-stats-grid *) { font-size: 1.5625rem !important; line-height: 2.2rem !important; } /* originally 1.25rem (20px) * 1.25 = 25px */
+.text-2xl:not(#kpi-stats-grid *) { font-size: 1.875rem !important; line-height: 2.5rem !important; } /* originally 1.5rem (24px) * 1.25 = 30px */
+.text-3xl:not(#kpi-stats-grid *) { font-size: 2.34375rem !important; line-height: 2.9rem !important; } /* originally 1.875rem (30px) * 1.25 = 37.5px */
+.text-4xl:not(#kpi-stats-grid *) { font-size: 2.8125rem !important; line-height: 3.5rem !important; } /* originally 2.25rem (36px) * 1.25 = 45px */
+.text-5xl:not(#kpi-stats-grid *) { font-size: 3.75rem !important; line-height: 4.5rem !important; } /* originally 3rem (48px) * 1.25 = 60px */
+
+/* Explicitly freeze the top cards elements to their exact reference values */
+#kpi-stats-grid .text-xs,
+#kpi-stats-grid span.text-xs {
+  font-size: 12px !important; /* exactly 0.75rem */
+  line-height: 16px !important;
+}
+#kpi-stats-grid .text-3xl {
+  font-size: 30px !important; /* exactly 1.875rem */
+  line-height: 36px !important;
+}
+
+/* Custom scrollbars for Light mode */
 ::-webkit-scrollbar {
-  width: 5px;
-  height: 5px;
+  width: 6px;
+  height: 6px;
 }
 ::-webkit-scrollbar-track {
   background: transparent;
 }
 ::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.08);
+  background: rgba(15, 23, 42, 0.12) !important;
   border-radius: 9999px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(255, 255, 255, 0.15);
+  background: rgba(15, 23, 42, 0.22) !important;
 }

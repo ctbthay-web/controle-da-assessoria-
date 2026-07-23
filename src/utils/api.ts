@@ -73,6 +73,24 @@ export const api = {
     }
   },
 
+  auditLogs: {
+    async list(): Promise<AuditLog[]> {
+      return await fetchWithAuth("/api/audit-logs");
+    },
+    async create(acao: string, detalhes: string, usuarioNome?: string): Promise<any> {
+      return await fetchWithAuth("/api/audit-logs", {
+        method: "POST",
+        body: JSON.stringify({ acao, detalhes, usuarioNome })
+      });
+    },
+    async delete(id: string): Promise<void> {
+      await fetchWithAuth(`/api/audit-logs/${id}`, { method: "DELETE" });
+    },
+    async clear(): Promise<void> {
+      await fetchWithAuth("/api/audit-logs/clear", { method: "DELETE" });
+    }
+  },
+
   clients: {
     async list(): Promise<Client[]> {
       return await fetchWithAuth("/api/clients");
@@ -262,6 +280,33 @@ export const api = {
       return await fetchWithAuth("/api/users", {
         method: "POST",
         body: JSON.stringify(user)
+      });
+    },
+    async update(id: string, user: Partial<User>): Promise<User> {
+      return await fetchWithAuth(`/api/users/${id}`, {
+        method: "PUT",
+        body: JSON.stringify(user)
+      });
+    },
+    async delete(id: string): Promise<void> {
+      await fetchWithAuth(`/api/users/${id}`, { method: "DELETE" });
+    }
+  },
+
+  supabase: {
+    async getStatus(): Promise<{ configured: boolean; url: string; hasKey: boolean }> {
+      return await fetchWithAuth("/api/supabase/status");
+    },
+    async saveConfig(supabaseUrl: string, supabaseKey: string): Promise<{ success: boolean; message: string }> {
+      return await fetchWithAuth("/api/supabase/save-config", {
+        method: "POST",
+        body: JSON.stringify({ supabaseUrl, supabaseKey }),
+      });
+    },
+    async syncAll(customUrl?: string, customKey?: string): Promise<{ success: boolean; message: string; results?: any }> {
+      return await fetchWithAuth("/api/supabase/sync", {
+        method: "POST",
+        body: JSON.stringify({ customUrl, customKey }),
       });
     }
   }

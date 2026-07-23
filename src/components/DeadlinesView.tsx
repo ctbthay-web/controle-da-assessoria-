@@ -23,6 +23,7 @@ export function DeadlinesView({
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<string | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [deadlineToDeleteId, setDeadlineToDeleteId] = useState<string | null>(null);
 
   // Form Fields
   const [titulo, setTitulo] = useState<'DAS' | 'DARF' | 'IRPF' | 'DASNS-Simei' | 'EFD Reinf' | 'GIA' | 'Outros'>("GIA");
@@ -191,9 +192,9 @@ export function DeadlinesView({
                           dl.status === "Pago" 
                             ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/20"
                             : dl.status === "Guia Emitida"
-                            ? "bg-blue-500/10 text-blue-450 border-blue-500/20"
+                            ? "bg-blue-500/10 text-blue-400 border-blue-500/20"
                             : dl.status === "Vencido"
-                            ? "bg-rose-500/10 text-rose-450 border-rose-500/15"
+                            ? "bg-rose-500/10 text-rose-400 border-rose-500/15"
                             : "bg-amber-500/10 text-amber-400 border-amber-500/20"
                         }`}
                         title="Clique p/ girar status"
@@ -204,11 +205,32 @@ export function DeadlinesView({
                     </td>
                     <td className="px-6 py-3.5 text-center">
                       <button
-                        onClick={() => onDeleteDeadline(dl.id)}
-                        className="p-1 hover:bg-rose-500/10 text-rose-450 rounded transition-colors cursor-pointer"
-                        title="Remover guia"
+                        onClick={() => {
+                          if (deadlineToDeleteId === dl.id) {
+                            onDeleteDeadline(dl.id);
+                            setDeadlineToDeleteId(null);
+                          } else {
+                            setDeadlineToDeleteId(dl.id);
+                            setTimeout(() => {
+                              setDeadlineToDeleteId(prev => prev === dl.id ? null : prev);
+                            }, 4000);
+                          }
+                        }}
+                        className={`p-1 rounded cursor-pointer transition-all flex items-center justify-center gap-1 mx-auto ${
+                          deadlineToDeleteId === dl.id
+                            ? "bg-rose-500/20 text-rose-400 border border-rose-500/30 font-bold px-2 py-0.5"
+                            : "hover:bg-rose-500/10 text-rose-400"
+                        }`}
+                        title={deadlineToDeleteId === dl.id ? "Clique novamente para confirmar a exclusão" : "Remover guia"}
                       >
-                        <Trash2 className="w-3.5 h-3.5" />
+                        {deadlineToDeleteId === dl.id ? (
+                          <>
+                            <AlertCircle className="w-3 h-3 text-rose-400 animate-bounce" />
+                            <span className="text-[10px]">Confirmar?</span>
+                          </>
+                        ) : (
+                          <Trash2 className="w-3.5 h-3.5" />
+                        )}
                       </button>
                     </td>
                   </tr>
@@ -234,7 +256,7 @@ export function DeadlinesView({
 
             <form onSubmit={handleSave} className="p-6 space-y-4">
               <div>
-                <label className="block text-zinc-450 text-[10px] font-semibold mb-1 uppercase tracking-wider font-mono">Empresa / Cliente</label>
+                <label className="block text-zinc-400 text-[10px] font-semibold mb-1 uppercase tracking-wider font-mono">Empresa / Cliente</label>
                 <select
                   required
                   className="w-full bg-[#0c0c0e] border border-white/5 rounded-lg px-3 py-2 text-xs text-zinc-200 outline-none focus:border-blue-500"
@@ -250,7 +272,7 @@ export function DeadlinesView({
 
               <div className="grid grid-cols-2 gap-3.5">
                 <div>
-                  <label className="block text-zinc-450 text-[10px] font-semibold mb-1 uppercase tracking-wider font-mono">Imposto / Livro</label>
+                  <label className="block text-zinc-400 text-[10px] font-semibold mb-1 uppercase tracking-wider font-mono">Imposto / Livro</label>
                   <select
                     className="w-full bg-[#0c0c0e] border border-white/5 rounded-lg px-3 py-2 text-xs text-zinc-300 outline-none"
                     value={titulo}
@@ -267,7 +289,7 @@ export function DeadlinesView({
                 </div>
 
                 <div>
-                  <label className="block text-zinc-450 text-[10px] font-semibold mb-1 uppercase tracking-wider font-mono">Vencimento Legal</label>
+                  <label className="block text-zinc-400 text-[10px] font-semibold mb-1 uppercase tracking-wider font-mono">Vencimento Legal</label>
                   <input
                     type="date"
                     required
@@ -278,7 +300,7 @@ export function DeadlinesView({
                 </div>
 
                 <div>
-                  <label className="block text-zinc-450 text-[10px] font-semibold mb-1 uppercase tracking-wider font-mono">Status Apuração</label>
+                  <label className="block text-zinc-400 text-[10px] font-semibold mb-1 uppercase tracking-wider font-mono">Status Apuração</label>
                   <select
                     className="w-full bg-[#0c0c0e] border border-white/5 rounded-lg px-3 py-2 text-xs text-zinc-300 outline-none"
                     value={status}
@@ -304,7 +326,7 @@ export function DeadlinesView({
               </div>
 
               <div>
-                <label className="block text-zinc-450 text-[10px] font-semibold mb-1 uppercase tracking-wider font-mono">Descrição / Competência (Ex: Ref. Abril 2026)</label>
+                <label className="block text-zinc-400 text-[10px] font-semibold mb-1 uppercase tracking-wider font-mono">Descrição / Competência (Ex: Ref. Abril 2026)</label>
                 <input
                   type="text"
                   className="w-full bg-[#0c0c0e] border border-white/5 rounded-lg px-3 py-2 text-xs text-zinc-200 focus:outline-none focus:border-blue-500"

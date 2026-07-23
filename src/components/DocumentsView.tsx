@@ -125,14 +125,14 @@ export function DocumentsView({
           <input
             type="text"
             placeholder="Buscar por nome do arquivo..."
-            className="w-full bg-[#0c0c0e] border border-white/5 rounded-lg pl-9.5 pr-4 py-2 text-xs text-zinc-200 placeholder-zinc-550 focus:outline-none focus:border-blue-500"
+            className="w-full bg-[#0c0c0e] border border-white/5 rounded-lg pl-9.5 pr-4 py-2 text-xs text-zinc-200 placeholder-zinc-500 focus:outline-none focus:border-blue-500"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
           />
         </div>
 
         <select
-          className="bg-[#0c0c0e] border border-white/5 rounded-lg px-3 py-2 text-xs text-zinc-350 outline-none focus:border-blue-500"
+          className="bg-[#0c0c0e] border border-white/5 rounded-lg px-3 py-2 text-xs text-zinc-300 outline-none focus:border-blue-500"
           value={selectedClientFilter || ""}
           onChange={(e) => setSelectedClientFilter(e.target.value || null)}
         >
@@ -239,7 +239,7 @@ export function DocumentsView({
 
               {/* Text simulation base64 summary */}
               <div className="bg-[#0c0c0e] rounded-lg p-4 font-mono text-[11px] text-zinc-400 min-h-[140px] border border-white/5 leading-relaxed text-left max-h-60 overflow-y-auto">
-                <span className="text-zinc-650 uppercase font-bold text-[9px] block mb-2">// Conteúdo Binário Descriptografado:</span>
+                <span className="text-zinc-500 uppercase font-bold text-[9px] block mb-2">// Conteúdo Binário Descriptografado:</span>
                 Contrato Social ou guia fiscal registrada em formato seguro base64. O arquivo contém hashes de auditoria e está pronto para exportação/download integral.
                 <br /><br />
                 Tamanho Físico: {previewDoc.tamanho}

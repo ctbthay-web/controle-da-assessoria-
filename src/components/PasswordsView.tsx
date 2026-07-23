@@ -166,7 +166,7 @@ export function PasswordsView({
           <input
             type="text"
             placeholder="Buscar por portal, usuário ou cliente..."
-            className="w-full bg-[#0c0c0e] border border-white/5 rounded-lg pl-9.5 pr-4 py-2 text-xs text-zinc-200 placeholder-zinc-550 focus:outline-none focus:border-blue-500"
+            className="w-full bg-[#0c0c0e] border border-white/5 rounded-lg pl-9.5 pr-4 py-2 text-xs text-zinc-200 placeholder-zinc-500 focus:outline-none focus:border-blue-500"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
           />
@@ -257,7 +257,7 @@ export function PasswordsView({
                   <div className="flex items-center gap-1 shrink-0">
                     <button
                       onClick={() => onDeletePassword(p.id)}
-                      className="text-rose-450 hover:bg-[#ffebeb]/5 p-1 rounded transition-colors cursor-pointer"
+                      className="text-rose-400 hover:bg-[#ffebeb]/5 p-1 rounded transition-colors cursor-pointer"
                       title="Excluir credencial"
                     >
                       <Trash2 className="w-3.5 h-3.5" />
@@ -276,12 +276,12 @@ export function PasswordsView({
           <div className="bg-[#111113] border-l border-white/5 w-full max-w-md h-full shadow-2xl overflow-y-auto flex flex-col animate-in slide-in-from-right duration-200">
             <div className="flex items-center justify-between px-6 py-5 border-b border-white/5 shrink-0 bg-[#0c0c0e] text-white">
               <div className="text-left">
-                <span className="text-[9px] text-zinc-550 font-mono tracking-wider uppercase block font-semibold">Auditoria Cofre</span>
+                <span className="text-[9px] text-zinc-400 font-mono tracking-wider uppercase block font-semibold">Auditoria Cofre</span>
                 <h3 className="font-bold text-sm leading-tight">Rastreabilidade de Senhas</h3>
               </div>
               <button
                 onClick={() => setShowLogsDrawer(false)}
-                className="text-zinc-550 hover:text-white p-1 rounded hover:bg-white/[0.04] cursor-pointer"
+                className="text-zinc-400 hover:text-white p-1 rounded hover:bg-white/[0.04] cursor-pointer"
               >
                 <X className="w-4.5 h-4.5" />
               </button>
